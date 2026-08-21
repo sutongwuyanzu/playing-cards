@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>打升级 · 原型 v1</title>
+<style>
+  :root{
+    --bg:#f1f5f9; --panel:#ffffff; --ink:#1e293b; --muted:#64748b;
+    --felt:#e7f3ea; --felt2:#d6ead d; --accent:#2563eb; --accent2:#16a34a;
+    --team0:#2563eb; --team1:#dc2626; --warn:#f97316;
+    --card:#ffffff; --cardBorder:#cbd5e1;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",Arial,sans-serif;
+    background:var(--bg);color:var(--ink);}
+  #app{max-width:980px;margin:0 auto;padding:12px;}
+  header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px;}
+  header h1{font-size:20px;margin:0;}
+  .pill{background:var(--panel);border:1px solid var(--cardBorder);border-radius:999px;
+    padding:4px 12px;font-size:13px;color:var(--muted);}
+  .pill b{color:var(--ink);}
+  #timerWrap{display:flex;align-items:center;gap:8px;margin-left:auto;}
+  #timerbarOuter{width:160px;height:10px;background:#e2e8f0;border-radius:6px;overflow:hidden;}
+  #timerbar{height:100%;width:100%;background:var(--accent2);transition:width .1s linear;}
+  #timertxt{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);min-width:54px;}
+  .table{position:relative;background:linear-gradient(160deg,var(--felt),#cfe6d6);
+    border-radius:18px;height:520px;border:1px solid #b9d8c4;box-shadow:inset 0 0 40px rgba(0,0,0,.05);}
+  .seat{position:absolute;width:150px;background:rgba(255,255,255,.92);border-radius:12px;
+    padding:8px 10px;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.08);}
+  .seat .name{font-weight:600;display:flex;justify-content:space-between;align-items:center;}
+  .seat .cnt{font-size:12px;color:var(--muted);}
+  .seat .played{min-height:46px;display:flex;gap:3px;flex-wrap:wrap;margin-top:6px;}
+  .seat.active{outline:3px solid var(--warn);}
+  .team0{color:var(--team0)} .team1{color:var(--team1)}
+  .seat0{bottom:10px;left:50%;transform:translateX(-50%);}
+  .seat2{top:10px;left:50%;transform:translateX(-50%);}
+  .seat1{top:50%;right:10px;transform:translateY(-50%);}
+  .seat3{top:50%;left:10px;transform:translateY(-50%);}
+  .center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:300px;height:160px;display:flex;align-items:center;justify-content:center;}
+  #trickArea{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .trickCell{min-height:62px;display:flex;align-items:center;justify-content:center;gap:2px;}
+  .card{width:38px;height:54px;background:var(--card);border:1px solid var(--cardBorder);
+    border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-weight:700;font-size:16px;user-select:none;position:relative;}
+  .card .suit{font-size:13px;line-height:1;}
+  .card.red{color:#dc2626;} .card.black{color:#0f172a;}
+  .card.joker{font-size:13px;}
+  .card.sel{outline:3px solid var(--accent);transform:translateY(-8px);}
+  .card.small{width:30px;height:42px;font-size:13px;}
+  .handbar{display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap;margin-top:12px;
+    min-height:64px;padding:6px;background:var(--panel);border-radius:12px;border:1px solid var(--cardBorder);}
+  #hand .card{cursor:pointer;transition:transform .1s;}
+  .controls{display:flex;gap:10px;margin-top:10px;align-items:center;flex-wrap:wrap;}
+  .setup{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding:8px 10px;
+    background:var(--panel);border:1px solid var(--cardBorder);border-radius:12px;font-size:14px;}
+  .setup label{margin-right:4px;cursor:pointer;}
+  .setup select{padding:6px 8px;border-radius:8px;border:1px solid var(--cardBorder);font-family:inherit;font-size:14px;}
+  button{font-family:inherit;font-size:14px;border:none;border-radius:8px;padding:9px 16px;
+    cursor:pointer;background:var(--accent);color:#fff;font-weight:600;}
+  button.ghost{background:#e2e8f0;color:var(--ink);}
+  button:disabled{opacity:.45;cursor:not-allowed;}
+  button.suit{background:#fff;color:var(--ink);border:1px solid var(--cardBorder);}
+  #toast{position:fixed;left:50%;top:16px;transform:translateX(-50%);background:#0f172a;color:#fff;
+    padding:8px 16px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50;}
+  #toast.show{opacity:.95;}
+  #log{margin-top:10px;background:var(--panel);border:1px solid var(--cardBorder);border-radius:12px;
+    padding:10px;font-size:13px;color:var(--muted);max-height:120px;overflow:auto;}
+  #overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:60;}
+  #overlay.show{display:flex;}
+  .modal{background:#fff;border-radius:16px;padding:24px;max-width:380px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.3);}
+  .modal h2{margin:0 0 8px;}
+  .modal p{color:var(--muted);margin:6px 0;}
+  .declareBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:12px;color:#fff;}
+  /* ---- 牌桌聊天 ---- */
+  .chat{margin-top:10px;background:var(--panel);border:1px solid var(--cardBorder);border-radius:12px;overflow:hidden;}
+  .chatHead{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f8fafc;border-bottom:1px solid var(--cardBorder);font-size:14px;font-weight:600;}
+  .chatHead .wait{margin-left:auto;font-size:12px;color:var(--muted);font-weight:400;}
+  .chatHead .wait.show{color:var(--warn);}
+  .chatLog{height:170px;overflow:auto;padding:8px 12px;font-size:13px;display:flex;flex-direction:column;gap:6px;background:#fff;}
+  .msg{max-width:82%;padding:6px 10px;border-radius:10px;line-height:1.4;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .msg .who{font-size:11px;opacity:.65;margin-bottom:2px;}
+  .msg.me{align-self:flex-end;background:var(--accent);color:#fff;}
+  .msg.me .who{text-align:right;}
+  .msg.other{align-self:flex-start;background:#eef2f7;color:var(--ink);}
+  .quick{display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px;border-top:1px solid var(--cardBorder);background:#fbfdff;}
+  .quick button{background:#eef2f7;color:var(--ink);font-size:12px;padding:5px 10px;border-radius:999px;border:1px solid var(--cardBorder);}
+  .quick button:hover{background:#e2e8f0;}
+  .chatInput{display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--cardBorder);}
+  .chatInput input{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--cardBorder);font-family:inherit;font-size:14px;}
+  .chatInput button{padding:8px 14px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>打升级 <span style="font-size:13px;color:var(--muted)">原型 v1</span></h1>
+    <span class="pill">打 <b id="lvlPill">2</b> 级</span>
+    <span class="pill" id="trumpPill">主牌：未定</span>
+    <span class="pill">本局积分 蓝<b id="t0">0</b> : 红<b id="t1">0</b></span>
+    <span class="pill" id="cfgPill">通用 · 2副</span>
+    <div id="timerWrap">
+      <div id="timerbarOuter"><div id="timerbar"></div></div>
+      <span id="timertxt">--</span>
+    </div>
+  </header>
+
+  <div class="setup" id="setupBar">
+    <span>副数：</span>
+    <label><input type="radio" name="decks" value="1">1副</label>
+    <label><input type="radio" name="decks" value="2" checked>2副</label>
+    <span style="margin-left:12px">区域玩法：</span>
+    <select id="regionSel">
+      <option>通用</option><option>江浙沪</option><option>川渝</option><option>广府</option><option>关东</option>
+    </select>
+    <button id="startBtn">开始游戏</button>
+    <span style="color:var(--muted);font-size:12px;margin-left:6px">（改副数/区域后点开始即重开一局）</span>
+  </div>
+
+  <div class="table" id="table">
+    <div class="seat seat2" id="seat2"><div class="name"><span class="team1">上家</span><span class="cnt" id="cnt2"></span></div><div class="played" id="pl2"></div></div>
+    <div class="seat seat1" id="seat1"><div class="name"><span class="team1">右家</span><span class="cnt" id="cnt1"></span></div><div class="played" id="pl1"></div></div>
+    <div class="seat seat3" id="seat3"><div class="name"><span class="team0">左家</span><span class="cnt" id="cnt3"></span></div><div class="played" id="pl3"></div></div>
+    <div class="seat seat0" id="seat0"><div class="name"><span class="team0">你</span><span class="cnt" id="cnt0"></span></div><div class="played" id="pl0"></div></div>
+    <div class="center"><div id="trickArea"></div></div>
+  </div>
+
+  <div class="handbar" id="hand"></div>
+
+  <div class="controls">
+    <button id="playBtn">出牌</button>
+    <button class="ghost" id="hintBtn">提示</button>
+    <button class="ghost" id="newBtn">新游戏</button>
+    <span id="phaseTip" style="color:var(--muted);font-size:13px;"></span>
+  </div>
+
+  <div id="log"></div>
+
+  <div class="chat" id="chat">
+    <div class="chatHead">💬 牌桌聊天 <span class="wait" id="chatWait"></span></div>
+    <div class="chatLog" id="chatLog"></div>
+    <div class="quick" id="quickPhrases"></div>
+    <div class="chatInput">
+      <input id="chatInput" placeholder="说点什么…（回车发送）" maxlength="50" autocomplete="off">
+      <button id="chatSend">发送</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="overlay"><div class="modal" id="modal"></div></div>
+
+<script>
+// === ENGINE START ===
+const SUITS = ['♠','♥','♣','♦'];
+const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+const rankVal = r => RANKS.indexOf(r); // 0..12
+const isT = (c, trump) => {
+  if (c.joker) return true;
+  if (c.rank === trump.level) return true;
+  if (!trump.noTrump && c.suit === trump.trumpSuit) return true;
+  return false;
+};
+const effSuit = (c, trump) => isT(c, trump) ? 'T' : c.suit;
+const power = (c, trump) => {
+  if (c.joker) return c.jokerType === 'big' ? 2000 : 1900;
+  const lvl = c.rank === trump.level;
+  const ts = !trump.noTrump && c.suit === trump.trumpSuit;
+  if (lvl && ts) return 1800;          // 正主
+  if (lvl) return 1700;                // 副主
+  if (ts) return 1000 + rankVal(c.rank);
+  return rankVal(c.rank);
+};
+function buildDeck(decks){
+  decks = decks || 2;
+  const cards = [];
+  for (let d = 0; d < decks; d++){
+    for (const s of SUITS){
+      for (const r of RANKS){
+        cards.push({ id:`${d}${s}${r}`, suit:s, rank:r, deck:d, joker:false });
+      }
+    }
+  }
+  for (let d = 0; d < decks; d++){
+    cards.push({ id:`${d}JOKER_B`, joker:true, jokerType:'big', suit:null, rank:null, deck:d });
+    cards.push({ id:`${d}JOKER_S`, joker:true, jokerType:'small', suit:null, rank:null, deck:d });
+  }
+  return cards;
+}
+function shuffle(a, rnd){
+  rnd = rnd || Math.random;
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(rnd() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+// decks=1 → 54张(13/家+2底)；decks=2 → 108张(25/家+8底)
+function deal(decks){
+  decks = decks || 2;
+  const total = decks * 54;
+  const kittySize = decks === 1 ? 2 : 8;
+  const per = (total - kittySize) / 4;
+  const deck = shuffle(buildDeck(decks));
+  const hands = [[],[],[],[]];
+  for (let i = 0; i < per * 4; i++) hands[i % 4].push(deck[i]);
+  const kitty = deck.slice(per * 4, per * 4 + kittySize);
+  return { hands, kitty, per, kittySize };
+}
+function sortHand(hand, trump){
+  return hand.slice().sort((a,b)=>{
+    const ta = isT(a,trump)?1:0, tb = isT(b,trump)?1:0;
+    if (ta !== tb) return tb - ta;
+    return power(b,trump) - power(a,trump);
+  });
+}
+function isPair(cards){
+  return cards.length === 2 && cards[0].suit === cards[1].suit && cards[0].rank === cards[1].rank;
+}
+function getPairs(hand){
+  const m = {};
+  for (const c of hand){ const k = c.suit + c.rank; (m[k] = m[k] || []).push(c); }
+  const res = [];
+  for (const k in m) if (m[k].length >= 2) res.push([m[k][0], m[k][1]]);
+  return res;
+}
+function handHasAll(hand, sel){
+  const ids = new Set(hand.map(c=>c.id));
+  return sel.every(c=>ids.has(c.id));
+}
+function getValidPlays(hand, leadCards, trump){
+  const leading = !leadCards;
+  if (leading){
+    const singles = hand.map(c=>[c]);
+    const pairs = getPairs(hand);
+    return { mode:'lead', options: singles.concat(pairs) };
+  }
+  const size = leadCards.length;
+  const leadEff = effSuit(leadCards[0], trump);
+  let pool, requiredSuit = null, mustTrump = false;
+  if (leadEff === 'T'){ mustTrump = true; pool = hand.filter(c=>isT(c,trump)); }
+  else { requiredSuit = leadCards[0].suit; pool = hand.filter(c=>c.suit === requiredSuit); }
+  const has = pool.length > 0;
+  let options = [];
+  if (has){
+    if (size === 1) options = pool.map(c=>[c]);
+    else {
+      const prs = getPairs(pool);
+      options = prs.length ? prs : comb2(pool);
+    }
+  } else {
+    if (size === 1) options = hand.map(c=>[c]);
+    else {
+      const prs = getPairs(hand);
+      options = prs.length ? prs : comb2(hand);
+    }
+  }
+  return { mode:'follow', options, mustFollow:has, requiredSuit, mustTrump };
+}
+function comb2(arr){
+  const r = [];
+  for (let i=0;i<arr.length;i++) for (let j=i+1;j<arr.length;j++) r.push([arr[i],arr[j]]);
+  return r;
+}
+function isLegalPlay(hand, selected, leadCards, trump){
+  if (!selected.length) return false;
+  if (!handHasAll(hand, selected)) return false;
+  const leading = !leadCards;
+  if (leading){
+    if (selected.length === 1) return true;
+    if (selected.length === 2) return isPair(selected);
+    return false;
+  }
+  const size = leadCards.length;
+  if (selected.length !== size) return false;
+  const leadEff = effSuit(leadCards[0], trump);
+  if (leadEff === 'T'){
+    const haveTrump = hand.some(c=>isT(c,trump));
+    if (haveTrump && !selected.every(c=>isT(c,trump))) return false;
+  } else {
+    const req = leadCards[0].suit;
+    const haveSuit = hand.some(c=>c.suit === req);
+    if (haveSuit && !selected.every(c=>c.suit === req)) return false;
+  }
+  return true;
+}
+function trickWinner(plays, trump){
+  const lead = plays[0].cards;
+  const trumps = plays.filter(p => p.cards.some(c=>isT(c,trump)));
+  if (trumps.length){
+    let best = trumps[0], bp = -1;
+    for (const p of trumps) for (const c of p.cards){ const pw = power(c,trump); if (pw > bp){ bp = pw; best = p; } }
+    return best.seat;
+  }
+  const ledSuit = lead[0].suit;
+  const led = plays.filter(p => p.cards.every(c => !isT(c,trump) && c.suit === ledSuit));
+  let best = led[0], bv = -1;
+  for (const p of led) for (const c of p.cards){ const v = rankVal(c.rank); if (v > bv){ bv = v; best = p; } }
+  if (best) return best.seat;
+  let fb = plays[0], fv = -1;
+  for (const p of plays) for (const c of p.cards){ const v = power(c,trump); if (v > fv){ fv = v; fb = p; } }
+  return fb.seat;
+}
+function trickPoints(cards){
+  let s = 0;
+  for (const c of cards){
+    if (c.rank === '5') s += 5;
+    else if (c.rank === '10') s += 10;
+    else if (c.rank === 'K') s += 10;
+  }
+  return s;
+}
+// 20s 超时：默认出「对应花色最小的牌」
+function autoPlay(hand, leadCards, trump){
+  const leading = !leadCards;
+  if (leading){
+    const s = sortHand(hand, trump);
+    return [s[s.length - 1]];
+  }
+  const size = leadCards.length;
+  const leadEff = effSuit(leadCards[0], trump);
+  if (leadEff === 'T'){
+    const tr = hand.filter(c=>isT(c,trump));
+    if (tr.length){
+      const s = tr.slice().sort((a,b)=>power(a,trump)-power(b,trump));
+      return fill(s, size, hand);
+    }
+  } else {
+    const req = leadCards[0].suit;
+    const pool = hand.filter(c=>c.suit === req);
+    if (pool.length){
+      const s = pool.slice().sort((a,b)=>rankVal(a.rank)-rankVal(b.rank));
+      return fill(s, size, hand);
+    }
+  }
+  const byP = hand.slice().sort((a,b)=>power(a,trump)-power(b,trump));
+  return byP.slice(0, size);
+}
+function fill(part, size, hand){
+  if (part.length >= size) return part.slice(0, size);
+  const rest = hand.filter(c=>!part.includes(c)).sort((a,b)=>power(a,trump0)-power(b,trump0));
+  return part.concat(rest.slice(0, size - part.length));
+}
+let trump0 = { trumpSuit:null, level:'2', noTrump:false };
+function aiPlay(hand, leadCards, trump, seat, state){
+  const valid = getValidPlays(hand, leadCards, trump);
+  if (valid.mode === 'lead'){
+    const sorted = sortHand(hand, trump);
+    const nonTrump = sorted.filter(c=>!isT(c,trump));
+    const ordered = nonTrump.length ? nonTrump : sorted;
+    const pairs = getPairs(hand);
+    if (pairs.length && Math.random() < 0.4){
+      pairs.sort((a,b)=>power(b[0],trump)-power(a[0],trump));
+      return pairs[0];
+    }
+    return [ordered[ordered.length - 1]];
+  }
+  const opts = valid.options.slice().sort((a,b)=>optPow(a,trump)-optPow(b,trump));
+  const plays = state.trickPlays || [];
+  const smallest = opts[0];
+  if (!plays.length) return smallest;
+  const winSeat = trickWinner(plays, trump);
+  if ((winSeat % 2) === (seat % 2)) return smallest; // 队友领先，不抢
+  const wp = Math.max(...plays.find(p=>p.seat===winSeat).cards.map(c=>power(c,trump)));
+  const beaters = opts.filter(o=>optPow(o,trump) > wp);
+  return beaters.length ? beaters[0] : smallest;
+}
+function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
+// === ENGINE END ===
+
+// ---- 以下为 UI / 游戏流程（仅浏览器执行） ----
+if (typeof document !== 'undefined'){
+(function(){
+  const G = {
+    level:'2', trump:{trumpSuit:null,level:'2',noTrump:false},
+    cfg:Object.assign({}, REGIONS['通用']),
+    hands:[[],[],[],[]], kitty:[], bottom:[], declarer:null,
+    phase:'idle', turn:0, trickPlays:[], leadCards:null,
+    trickNumber:0, totalTricks:25, teamPoints:[0,0], lastWinner:null,
+    selected:[], timerInt:null, timerTo:null, timerEnd:0, pendingDeclare:0
+  };
+  const $ = id => document.getElementById(id);
+  const teamOf = s => s % 2; // 0队:座0,2(蓝)  1队:座1,3(红)
+  const SEAT_NAME = ['你','右家','上家','左家'];
+
+  // 区域玩法预设（代表性配置，非权威规则书）：影响副数/无主/反主/抠底/起打级
+  const REGIONS = {
+    '通用':   {decks:2, allowNoTrump:true,  allowRob:true,  kitty:'flat',   start:'2'},
+    '江浙沪': {decks:2, allowNoTrump:true,  allowRob:true,  kitty:'double', start:'2'},
+    '川渝':   {decks:1, allowNoTrump:false, allowRob:false, kitty:'flat',   start:'2'},
+    '广府':   {decks:2, allowNoTrump:true,  allowRob:false, kitty:'flat',   start:'2'},
+    '关东':   {decks:2, allowNoTrump:true,  allowRob:true,  kitty:'double', start:'A'}
+  };
+
+  function log(msg){ const el=$('log'); el.innerHTML += '<div>'+msg+'</div>'; el.scrollTop = el.scrollHeight; }
+  function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1800); }
+  function describe(cards){
+    if (!cards.length) return '过';
+    return cards.map(c=>c.joker?(c.jokerType==='big'?'大王':'小王'):(c.rank+c.suit)).join(' ');
+  }
+
+  function cardHTML(c, cls){
+    if (c.joker) return `<div class="card joker ${cls||''}">${c.jokerType==='big'?'大':'小'}<br>王</div>`;
+    const red = (c.suit==='♥'||c.suit==='♦') ? 'red' : 'black';
+    return `<div class="card ${red} ${cls||''}" data-id="${c.id}">${c.rank}<span class="suit">${c.suit}</span></div>`;
+  }
+
+  // ---- 牌桌聊天 ----
+  const QUICK = ['大龙我是第一吗','听说你想跟我比比','听说你想跟我赛赛','我比你饿','啦儿啦啦儿啦 啪叽','呜儿呜儿呜儿','弟子规圣人训','首孝悌次谨信','自强不息 毁人生','你们老是捣乱 不讲了','我是王蒙牛'];
+  const AI_REPLIES = ['就这？','呵呵','不服来战','你等着瞧','我才是老大','少废话，看牌','稳了','你不行啊','操作呢','下把赢你'];
+  let chatLog = [];
+  function renderChat(){
+    const el = $('chatLog'); el.innerHTML = '';
+    for (const m of chatLog){
+      const d = document.createElement('div');
+      d.className = 'msg ' + (m.me ? 'me' : 'other');
+      const who = document.createElement('div'); who.className = 'who' + (m.me ? ' me' : '');
+      who.textContent = m.who;
+      const tx = document.createElement('div'); tx.textContent = m.text;
+      d.appendChild(who); d.appendChild(tx); el.appendChild(d);
+    }
+    el.scrollTop = el.scrollHeight;
+  }
+  function sendChat(text, who){
+    text = (text || '').trim(); if (!text) return;
+    chatLog.push({ me: who === '你', who, text });
+    renderChat();
+    // AI 偶尔回一句，营造“跟朋友一起玩”的氛围
+    if (who === '你' && Math.random() < 0.6){
+      const rseat = [1,2,3][Math.floor(Math.random()*3)];
+      const reply = AI_REPLIES[Math.floor(Math.random()*AI_REPLIES.length)];
+      setTimeout(()=>{ sendChat(reply, SEAT_NAME[rseat]); }, 700 + Math.random()*1300);
+    }
+  }
+  function setChatWait(on, text){
+    const w = $('chatWait');
+    w.textContent = on ? (text || '等待中，可以聊天 ⌨️') : '';
+    w.classList.toggle('show', !!on);
+  }
+
+  function startGame(){
+    clearTimers();
+    G.trump = { trumpSuit:null, level:G.level, noTrump:false };
+    trump0 = G.trump;
+    const { hands, kitty } = deal(G.cfg.decks);
+    G.hands = hands;
+    G.kitty = kitty;
+    G.bottom = []; G.declarer = null;
+    G.trickPlays = []; G.leadCards = null; G.trickNumber = 0;
+    G.totalTricks = G.hands[0].length;
+    G.teamPoints = [0,0]; G.lastWinner = null; G.selected = [];
+    G.pendingDeclare = 0;
+    $('log').innerHTML = '';
+    const per = G.hands[0].length;
+    log('发牌完成：'+G.cfg.decks+' 副牌，每人 '+per+' 张，底牌 '+G.kitty.length+' 张。打 <b>'+G.level+'</b> 级，区域：'+regionName()+'。');
+    renderAll();
+    runDeclare();
+  }
+  function regionName(){ return Object.keys(REGIONS).find(k=>JSON.stringify(REGIONS[k])===JSON.stringify(G.cfg)) || ('自定义('+G.cfg.decks+'副)'); }
+  function applyConfig(){
+    const region = $('regionSel').value;
+    const decks = parseInt(document.querySelector('input[name=decks]:checked').value,10);
+    G.cfg = Object.assign({}, REGIONS[region]);
+    G.cfg.decks = decks; // 副数可手动覆盖区域推荐值
+    G.level = G.cfg.start;
+    $('cfgPill').textContent = region+' · '+decks+'副';
+  }
+
+  // ---- 亮主阶段 ----
+  function runDeclare(){
+    G.phase = 'declare';
+    if (G.pendingDeclare >= 4){
+      if (G.trump.trumpSuit === null && !G.trump.noTrump){
+        // 翻底定主
+        const k = G.kitty[0];
+        if (k.joker){ G.trump.noTrump = true; }
+        else { G.trump.trumpSuit = k.suit; }
+        G.declarer = 0;
+        log('无人亮主 → 翻底牌定主：' + (G.trump.noTrump?'无主':(G.trump.trumpSuit+' 主')) + '。庄家=你');
+      }
+      finishDeclare();
+      return;
+    }
+    const seat = G.pendingDeclare;
+    if (seat === 0){ showDeclareUI(); }
+    else {
+      setChatWait(true, '等待 '+SEAT_NAME[seat]+' 亮主…可聊天');
+      setTimeout(()=>{ aiDeclare(seat); G.pendingDeclare++; runDeclare(); }, 700);
+    }
+  }
+  function declareStrength(d){
+    if (!d) return -1;
+    if (d.noTrump) return 3;
+    if (d.pair) return 2;
+    return 1;
+  }
+  function betterDecl(a,b){
+    const sa=declareStrength(a), sb=declareStrength(b);
+    if (sa!==sb) return sa>sb;
+    return true; // 同强度后者胜
+  }
+  function applyDeclare(d){
+    if (!G.cfg.allowRob && G._curDecl) return; // 不允许反主：首个有效声明锁定
+    if (betterDecl(d, G._curDecl)){
+      G._curDecl = d;
+      if (d.noTrump){ G.trump.noTrump=true; G.trump.trumpSuit=null; }
+      else { G.trump.trumpSuit=d.suit; G.trump.noTrump=false; }
+      G.declarer = d.owner;
+    }
+  }
+  G._curDecl = null;
+  function aiDeclare(seat){
+    const lvl = G.level;
+    const lvlCards = G.hands[seat].filter(c=>c.rank===lvl);
+    // 统计各花色级牌对数
+    const suitPairs = {}; SUITS.forEach(s=>suitPairs[s]=0);
+    const suitSingles = {}; SUITS.forEach(s=>suitSingles[s]=0);
+    for (const c of lvlCards){ if (c.suit) suitPairs[c.suit]++; }
+    let best=null;
+    for (const s of SUITS){ if (suitPairs[s]>=2){ best={suit:s,pair:true,owner:seat}; break; } }
+    if (!best){
+      const hasJoker = G.cfg.allowNoTrump && G.hands[seat].some(c=>c.joker);
+      if (hasJoker && Math.random()<0.5){ best={noTrump:true,owner:seat}; }
+      else {
+        for (const s of SUITS){ if (suitPairs[s]>=1){ best={suit:s,pair:false,owner:seat}; break; } }
+      }
+    }
+    if (best){ applyDeclare(best); log(SEAT_NAME[seat]+' 亮主：'+(best.noTrump?'无主':best.suit+(best.pair?'对':'') )); }
+    else log(SEAT_NAME[seat]+' 不亮');
+  }
+  function showDeclareUI(){
+    G.phase='declare-human';
+    setChatWait(false);
+    const lvl = G.level;
+    const lvlCards = G.hands[0].filter(c=>c.rank===lvl);
+    const suitCnt={}; SUITS.forEach(s=>suitCnt[s]=0);
+    for (const c of lvlCards){ if (c.suit) suitCnt[c.suit]++; }
+    const hasJoker = G.hands[0].some(c=>c.joker);
+    let html = '<div class="modal"><h2>亮主</h2><p>你持有 <b>'+lvl+'</b> 级牌，可亮主'+(G.cfg.allowNoTrump?'或无主':'')+'；不亮则点「不亮」。</p><div class="declareBtns">';
+    for (const s of SUITS){ if (suitCnt[s]>=1){ html += `<button class="suit" data-act="suit" data-suit="${s}">亮 ${s}${suitCnt[s]>=2?'（对）':''}</button>`; } }
+    if (hasJoker && G.cfg.allowNoTrump) html += `<button class="suit" data-act="notrump">亮 无主</button>`;
+    html += `<button data-act="pass">不亮</button></div></div>`;
+    $('modal').innerHTML = html; $('overlay').classList.add('show');
+    $('modal').querySelectorAll('button').forEach(b=>{
+      b.onclick = ()=>{
+        const act=b.dataset.act;
+        if (act==='suit'){ applyDeclare({suit:b.dataset.suit, pair:suitCnt[b.dataset.suit]>=2, owner:0}); log('你 亮主：'+b.dataset.suit+(suitCnt[b.dataset.suit]>=2?'对':'')); }
+        else if (act==='notrump'){ applyDeclare({noTrump:true,owner:0}); log('你 亮主：无主'); }
+        else log('你 不亮');
+        $('overlay').classList.remove('show');
+        G.pendingDeclare++; runDeclare();
+      };
+    });
+  }
+  function finishDeclare(){
+    G._curDecl = null;
+    if (G.trump.trumpSuit===null && !G.trump.noTrump){ G.trump.trumpSuit='♠'; } // 兜底
+    trump0 = G.trump;
+    $('lvlPill').textContent = G.level;
+    $('trumpPill').textContent = '主牌：' + (G.trump.noTrump?'无主':G.trump.trumpSuit);
+    log('主牌确定为：<b>'+(G.trump.noTrump?'无主':G.trump.trumpSuit)+'</b>，庄家='+SEAT_NAME[G.declarer]);
+    // 庄家拿底牌
+    G.hands[G.declarer] = G.hands[G.declarer].concat(G.kitty);
+    const sorted = G.hands[G.declarer].slice().sort((a,b)=>{
+      const ta=isT(a,G.trump)?1:0, tb=isT(b,G.trump)?1:0;
+      if (ta!==tb) return ta-tb;
+      return power(a,G.trump)-power(b,G.trump);
+    });
+    const discard = sorted.slice(0, G.kitty.length);
+    G.bottom = discard;
+    G.hands[G.declarer] = G.hands[G.declarer].filter(c=>!discard.includes(c));
+    G.kitty = [];
+    log('庄家扣底 '+discard.length+' 张（含分 '+trickPoints(discard)+' 分，抠底归末圈赢家）。');
+    G.phase='play'; G.turn=G.declarer; G.trickPlays=[]; G.leadCards=null;
+    renderAll();
+    nextTurn();
+  }
+
+  // ---- 出牌阶段 ----
+  function nextTurn(){
+    renderAll();
+    if (G.hands[0].length===0){ endGame(); return; }
+    const seat = G.turn;
+    if (seat===0){
+      G.phase='play-human';
+      setChatWait(false);
+      $('phaseTip').textContent = G.leadCards? '跟牌：必须出 '+G.leadCards.length+' 张'+suitName(G.leadCards[0])+'（无该花色可垫/出主）' : '你领出（点牌选择，对子需选两张同点同花）';
+      startTimer();
+    } else {
+      G.phase='play-ai';
+      setChatWait(true, SEAT_NAME[seat]+' 思考中…可以聊天');
+      $('phaseTip').textContent = SEAT_NAME[seat]+' 思考中…';
+      setTimeout(()=>{
+        const cards = aiPlay(G.hands[seat], G.leadCards, G.trump, seat, { trickPlays: G.trickPlays });
+        doPlay(seat, cards);
+      }, 850);
+    }
+  }
+  function suitName(c){
+    if (isT(c,G.trump)) return '主牌';
+    return c.suit+' 花色';
+  }
+  function startTimer(){
+    clearTimers();
+    G.timerEnd = Date.now()+20000;
+    G.timerInt = setInterval(updateTimer, 100);
+    G.timerTo = setTimeout(onTimeout, 20000);
+    updateTimer();
+  }
+  function updateTimer(){
+    const left = Math.max(0, G.timerEnd - Date.now());
+    $('timerbar').style.width = (left/20000*100)+'%';
+    $('timertxt').textContent = '⏱ '+(left/1000).toFixed(1)+'s';
+    if (left<=0) clearInterval(G.timerInt);
+  }
+  function onTimeout(){
+    clearTimers();
+    const cards = autoPlay(G.hands[0], G.leadCards, G.trump);
+    toast('⏰ 超时！自动出最小牌：'+describe(cards));
+    log('你 超时，系统自动出：'+describe(cards));
+    doPlay(0, cards);
+  }
+  function clearTimers(){ if (G.timerInt) clearInterval(G.timerInt); if (G.timerTo) clearTimeout(G.timerTo); }
+
+  function humanPlay(){
+    if (G.phase!=='play-human') return;
+    const sel = G.selected.map(id => G.hands[0].find(c=>c.id===id)).filter(Boolean);
+    if (!sel.length){ toast('请先选择要出的牌'); return; }
+    const ok = isLegalPlay(G.hands[0], sel, G.leadCards, G.trump);
+    if (!ok){ toast('出牌不合法：必须跟出相同花色 / 相同张数'); return; }
+    clearTimers();
+    doPlay(0, sel);
+  }
+  function doPlay(seat, cards){
+    G.selected = [];
+    G.hands[seat] = G.hands[seat].filter(c=>!cards.find(x=>x.id===c.id));
+    G.trickPlays.push({ seat, cards });
+    log(SEAT_NAME[seat]+' 出：'+describe(cards));
+    if (G.trickPlays.length===4){ resolveTrick(); }
+    else {
+      G.turn = (G.turn+1)%4;
+      if (!G.leadCards) G.leadCards = G.trickPlays[0].cards;
+      nextTurn();
+    }
+  }
+  function resolveTrick(){
+    const w = trickWinner(G.trickPlays, G.trump);
+    const team = teamOf(w);
+    let pts = 0; G.trickPlays.forEach(p=>pts+=trickPoints(p.cards));
+    if (G.trickNumber===G.totalTricks-1){
+      const n = G.trickPlays[0].cards.length;
+      const mult = G.cfg.kitty==='double' ? Math.pow(2, n-1) : 1;
+      const bp = trickPoints(G.bottom) * mult;
+      pts += bp;
+      log('末圈抠底 +'+bp+' 分'+(mult>1?('（'+n+'张 ×'+mult+'）'):''));
+    }
+    G.teamPoints[team] += pts;
+    G.lastWinner = w;
+    G.trickNumber++;
+    log('→ <b>'+(team===0?'蓝队(你方)':'红队')+'</b> 赢此圈，得 '+pts+' 分。');
+    renderAll();
+    setTimeout(()=>{
+      G.trickPlays = []; G.leadCards = null; G.turn = w;
+      if (G.hands[0].length===0){ endGame(); }
+      else nextTurn();
+    }, 900);
+  }
+  function endGame(){
+    clearTimers();
+    G.phase='over';
+    setChatWait(false);
+    const t0=G.teamPoints[0], t1=G.teamPoints[1];
+    const winner = t0>t1?0:1;
+    const winPts = winner===0?t0:t1;
+    const total = G.cfg.decks * 100; // 1副100分 / 2副200分
+    const frac = winPts/total;
+    const useDelta = frac>=0.6?4 : frac>=0.4?3 : frac>=0.2?2 : 1;
+    let idx = RANKS.indexOf(G.level) + useDelta;
+    let champion=false;
+    if (idx>12){ idx=12; champion=true; }
+    const newLevel = RANKS[idx];
+    let html = '<div class="modal"><h2>'+(winner===0?'蓝队（你方）胜利 🎉':'红队胜利')+'</h2>';
+    html += '<p>本局积分　蓝 <b>'+t0+'</b> : 红 <b>'+t1+'</b>（共 '+total+' 分）</p>';
+    if (champion) html += '<p>已打过 A，游戏通关！</p>';
+    else { html += '<p>升级：<b>'+G.level+'</b> → <b>'+newLevel+'</b>（升 '+useDelta+' 级）</p>'; G.level=newLevel; }
+    html += '<button id="again">再来一局</button></div>';
+    $('modal').innerHTML = html; $('overlay').classList.add('show');
+    $('again').onclick = ()=>{ $('overlay').classList.remove('show'); startGame(); };
+  }
+
+  // ---- 渲染 ----
+  function renderAll(){
+    for (let s=0;s<4;s++){
+      $('cnt'+s).textContent = G.hands[s].length+' 张';
+      $('seat'+s).classList.toggle('active', G.turn===s && G.phase!=='over');
+      const pl = G.trickPlays.find(p=>p.seat===s);
+      $('pl'+s).innerHTML = pl ? pl.cards.map(c=>cardHTML(c,'small')).join('') : '';
+    }
+    $('t0').textContent = G.teamPoints[0];
+    $('t1').textContent = G.teamPoints[1];
+    $('lvlPill').textContent = G.level;
+    $('trumpPill').textContent = '主牌：'+(G.trump.noTrump?'无主':(G.trump.trumpSuit||'未定'));
+    renderHand();
+    renderTrickArea();
+    $('playBtn').disabled = (G.phase!=='play-human');
+    $('hintBtn').disabled = (G.phase!=='play-human');
+  }
+  function renderHand(){
+    const wrap=$('hand'); wrap.innerHTML='';
+    if (G.phase==='declare'||G.phase==='declare-human'){ wrap.innerHTML='<span style="color:var(--muted)">亮主阶段…</span>'; return; }
+    const sorted = sortHand(G.hands[0], G.trump);
+    for (const c of sorted){
+      const el = document.createElement('div');
+      el.innerHTML = cardHTML(c,'');
+      const node = el.firstChild;
+      if (G.selected.includes(c.id)) node.classList.add('sel');
+      node.onclick = ()=>{
+        if (G.phase!=='play-human') return;
+        const i = G.selected.indexOf(c.id);
+        if (i>=0) G.selected.splice(i,1); else {
+          // 跟牌时限制张数=领出张数
+          const cap = G.leadCards? G.leadCards.length : (G.selected.length>=1 && isPair(G.selected.map(id=>G.hands[0].find(x=>x.id===id)).concat([c]))?2:99);
+          if (G.selected.length>=cap) G.selected.shift();
+          G.selected.push(c.id);
+        }
+        renderHand();
+      };
+      wrap.appendChild(node);
+    }
+  }
+  function renderTrickArea(){
+    const area=$('trickArea');
+    const map={0:'pl0',2:'pl2',1:'pl1',3:'pl3'};
+    // 用四角展示：中心区域直接画四家已出牌
+    area.innerHTML='';
+    const pos=[0,1,2,3];
+    pos.forEach(s=>{
+      const cell=document.createElement('div'); cell.className='trickCell';
+      const pl=G.trickPlays.find(p=>p.seat===s);
+      cell.innerHTML = (pl?pl.cards.map(c=>cardHTML(c,'small')).join(''):'<span style="color:#94a3b8;font-size:12px">'+SEAT_NAME[s]+'</span>');
+      area.appendChild(cell);
+    });
+  }
+  function hint(){
+    if (G.phase!=='play-human') return;
+    const v = getValidPlays(G.hands[0], G.leadCards, G.trump);
+    if (!v.options.length){ toast('无牌可出（异常）'); return; }
+    const pick = v.options.slice().sort((a,b)=>optPow(a,G.trump)-optPow(b,G.trump))[0];
+    G.selected = pick.map(c=>c.id);
+    renderHand();
+    toast('提示：'+describe(pick));
+  }
+
+  $('playBtn').onclick = humanPlay;
+  $('hintBtn').onclick = hint;
+  $('newBtn').onclick = ()=>{ $('overlay').classList.remove('show'); startGame(); };
+  $('startBtn').onclick = ()=>{ applyConfig(); $('overlay').classList.remove('show'); startGame(); };
+  // 区域变化时同步副数推荐值到单选（用户可再手动改）
+  $('regionSel').onchange = ()=>{
+    const d = REGIONS[$('regionSel').value].decks;
+    const r = document.querySelector('input[name=decks][value="'+d+'"]');
+    if (r) r.checked = true;
+  };
+
+  // ---- 聊天：默认话按钮 + 输入框发送 ----
+  const qw = $('quickPhrases');
+  QUICK.forEach(q=>{ const b = document.createElement('button'); b.textContent = q; b.title = q; b.onclick = ()=>sendChat(q,'你'); qw.appendChild(b); });
+  $('chatSend').onclick = ()=>{ const v = $('chatInput').value; if (v.trim()){ sendChat(v,'你'); $('chatInput').value=''; } };
+  $('chatInput').addEventListener('keydown', e=>{ if (e.key === 'Enter'){ const v = e.target.value; if (v.trim()){ sendChat(v,'你'); e.target.value=''; } } });
+
+  startGame();
+})();
+}
+</script>
+</body>
+</html>

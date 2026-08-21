@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>夜牌馆 · 打升级 / 斗地主</title>
+<meta name="description" content="灯下几张牌，约上三五友。打升级、斗地主，电脑陪玩，发给朋友就能玩。纯娱乐积分，不碰现金。">
+<meta property="og:title" content="夜牌馆">
+<meta property="og:description" content="打升级、斗地主。电脑陪玩，点开就能坐。">
+<meta property="og:image" content="assets/bg-lobby.jpg">
+<meta name="theme-color" content="#140c08">
+<link rel="icon" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/emblem.png">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/theme.css">
+</head>
+<body>
+<div class="lobby">
+  <div class="brand">
+    <img class="emblem" src="assets/emblem.png" alt="">
+    <h1>夜牌馆</h1>
+    <div class="tagline">灯下几张牌 · 约上三五友</div>
+  </div>
+
+  <div class="nick-row">
+    <label>雅号</label>
+    <input id="nick" maxlength="8" placeholder="过客" autocomplete="off">
+  </div>
+
+  <div class="games">
+    <a class="game-tile" href="shengji.html">
+      <div class="kicker">四人 · 区域玩法</div>
+      <h2>打升级</h2>
+      <p>亮主、跟花、抠底。你与阿兰对家一队，东哥、老周分坐两旁。空位由电脑入座。</p>
+      <span class="go">入座开桌</span>
+    </a>
+    <a class="game-tile" href="doudizhu.html">
+      <div class="kicker">三人 · 抢地主</div>
+      <h2>斗地主</h2>
+      <p>叫分、炸弹、春天。左邻东哥，右邻阿兰。记牌提示，纯积分结算。</p>
+      <span class="go">入座开桌</span>
+    </a>
+  </div>
+
+  <div class="soon-grid">
+    <div class="soon-chip">掼蛋 · 即将上桌</div>
+    <div class="soon-chip">炸金花 · 即将上桌</div>
+    <div class="soon-chip">捉黑枪 · 即将上桌</div>
+  </div>
+
+  <div class="lobby-actions">
+    <button class="btn btn-gold" id="inviteBtn">邀请好友</button>
+    <span class="pill">积分 <b id="bal">1000</b></span>
+  </div>
+  <div class="legal">虚拟积分仅作娱乐计分 · 不可提现 · 不可兑换 · 不碰现金</div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="js/hall.js"></script>
+<script>
+  const nickEl = document.getElementById('nick');
+  nickEl.value = NightHall.nick() === '过客' ? '' : NightHall.nick();
+  nickEl.addEventListener('change', () => NightHall.setNick(nickEl.value));
+  nickEl.addEventListener('blur', () => NightHall.setNick(nickEl.value));
+  document.getElementById('inviteBtn').onclick = () => NightHall.invite();
+  document.getElementById('bal').textContent = localStorage.getItem('ddz_bal') || '1000';
+</script>
+</body>
+</html>

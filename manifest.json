@@ -1,0 +1,14 @@
+{
+  "name": "夜牌馆",
+  "short_name": "夜牌馆",
+  "description": "打升级、斗地主。电脑陪玩，点开就能坐。",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#140c08",
+  "theme_color": "#140c08",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "assets/favicon.png", "sizes": "64x64", "type": "image/png" },
+    { "src": "assets/emblem.png", "sizes": "320x320", "type": "image/png" }
+  ]
+}

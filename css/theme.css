@@ -235,6 +235,9 @@ img{display:block;max-width:100%}
 }
 .nameplate .nm{font-weight:700;white-space:nowrap}
 .nameplate .cnt{color:var(--gold-bright);font-weight:700}
+.nameplate .role{font-size:10px;padding:0 4px;border-radius:4px;font-weight:700}
+.nameplate .role.atk{background:rgba(255,107,107,.2);color:var(--red-team)}
+.nameplate .role.def{background:rgba(110,168,255,.2);color:var(--blue-team)}
 .seat .played{min-height:38px;display:flex;gap:2px;flex-wrap:wrap;justify-content:center}
 .team0 .nm{color:var(--blue-team)}
 .team1 .nm{color:var(--red-team)}

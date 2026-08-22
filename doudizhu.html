@@ -79,6 +79,14 @@
           </select>
         </label>
         <label><input type="checkbox" id="randSeatChk"> 开局随机座位</label>
+        <label>出牌语音
+          <select id="voiceSel">
+            <option value="yujie">御姐</option>
+            <option value="loli">萝莉</option>
+            <option value="dashu">大叔</option>
+            <option value="youth" selected>青年</option>
+          </select>
+        </label>
       </div>
       <div class="wait-actions">
         <button class="btn btn-gold" id="btnBegin">开局</button>
@@ -114,6 +122,7 @@
 <script src="vendor/mqtt.min.js"></script>
 <script src="js/hall.js"></script>
 <script src="js/music.js"></script>
+<script src="js/voice.js"></script>
 <script src="js/net.js"></script>
 <script>
 const SUITS = ['♠','♥','♣','♦'];
@@ -358,6 +367,11 @@ function applyPlay(p, combo){
   sortHand(G.hands[p]);
   G.lastPlay=combo; G.lastPlayer=p; G.passes=0; G.selected=new Set(); G.hints=[];
   showPlayed(p, combo);
+  if (window.NightVoice){
+    const st = lobby && lobby.seats[p];
+    const vid = (st && st.voice) || (st && st.name==='阿兰'?'yujie': st && st.name==='东哥'?'dashu': (window.NightVoice.current()));
+    NightVoice.speak(vid, NightVoice.cardsText(combo.cards));
+  }
   if(G.hands[p].length===0){ endGame(p); return; }
   G.turn=(G.turn+1)%3;
   if (isAiSeat(G.turn) && isHost() && !G.finished) setTimeout(aiTurn, 800);
@@ -366,6 +380,11 @@ function applyPlay(p, combo){
 function applyPass(p){
   G.passes++;
   showPlayed(p, null);
+  if (window.NightVoice){
+    const st = lobby && lobby.seats[p];
+    const vid = (st && st.voice) || NightVoice.current();
+    NightVoice.speak(vid, '不出');
+  }
   if(G.passes>=2){
     G.turn=G.lastPlayer; G.lastPlay=null; G.passes=0;
   } else {
@@ -608,6 +627,11 @@ function applyRemote(s){
 }
 function handleAct(msg){
   if (!lobby || !isHost()) return;
+  if (msg.act==='voice'){
+    const seat = lobby.seats.findIndex(s=>s.kind==='human' && s.id===msg.id);
+    if (seat>=0){ lobby.seats[seat].voice = msg.voice; if (room) room.publishLobby(lobby); }
+    return;
+  }
   if (msg.act==='sit' && lobby.stage==='wait'){
     lobby.seats = NightNet.takeSeat(lobby.seats, {id:msg.id, nick:msg.nick}, msg.seat);
     room.publishLobby(lobby);
@@ -787,6 +811,20 @@ document.getElementById('randSeatChk').onchange = ()=>{
   lobby.cfg.randomSeats=document.getElementById('randSeatChk').checked;
   if (room) room.publishLobby(lobby);
 };
+(function(){
+  const vs = document.getElementById('voiceSel');
+  if (!vs || !window.NightVoice) return;
+  vs.value = NightVoice.current();
+  vs.onchange = ()=>{
+    NightVoice.setCurrent(vs.value);
+    NightVoice.speak(vs.value, '这是'+NightVoice.getType(vs.value).name+'音');
+    if (lobby && lobby.seats[mySeat()] && lobby.seats[mySeat()].kind==='human'){
+      lobby.seats[mySeat()].voice = vs.value;
+      if (room && isHost()) room.publishLobby(lobby);
+      else if (room) room.send({act:'voice', voice:vs.value});
+    }
+  };
+})();
 document.getElementById('chatFab').onclick = () => document.getElementById('chat').classList.add('open');
 document.getElementById('chatClose').onclick = () => document.getElementById('chat').classList.remove('open');
 const qw = document.getElementById('quickPhrases');

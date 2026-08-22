@@ -109,6 +109,7 @@
             <option value="loli">萝莉</option>
             <option value="dia">嗲嗲</option>
             <option value="dahai">大海</option>
+            <option value="jieliu">街溜子</option>
             <option value="dashu">大叔</option>
             <option value="youth" selected>青年</option>
           </select>
@@ -1428,7 +1429,8 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     const id = $('voiceSel').value;
     if (window.NightVoice){
       NightVoice.setCurrent(id);
-      NightVoice.speak(id, '这是'+NightVoice.getType(id).name+'音，出牌会报牌');
+      const t = NightVoice.getType(id);
+      NightVoice.speak(id, t.preview || ('这是'+t.name+'音，出牌会报牌'));
     }
     if (!lobby) return;
     const i = mySeat();

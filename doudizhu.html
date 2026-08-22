@@ -85,6 +85,7 @@
             <option value="loli">萝莉</option>
             <option value="dia">嗲嗲</option>
             <option value="dahai">大海</option>
+            <option value="jieliu">街溜子</option>
             <option value="dashu">大叔</option>
             <option value="youth" selected>青年</option>
           </select>
@@ -819,7 +820,8 @@ document.getElementById('randSeatChk').onchange = ()=>{
   vs.value = NightVoice.current();
   vs.onchange = ()=>{
     NightVoice.setCurrent(vs.value);
-    NightVoice.speak(vs.value, '这是'+NightVoice.getType(vs.value).name+'音');
+    const t = NightVoice.getType(vs.value);
+    NightVoice.speak(vs.value, t.preview || ('这是'+t.name+'音'));
     if (lobby && lobby.seats[mySeat()] && lobby.seats[mySeat()].kind==='human'){
       lobby.seats[mySeat()].voice = vs.value;
       if (room && isHost()) room.publishLobby(lobby);

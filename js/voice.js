@@ -4,6 +4,8 @@
   const TYPES = [
     { id: "yujie", name: "御姐", pitch: 0.82, rate: 0.9, prefer: ["huihui", "xiaoxiao", "xiaoyan"] },
     { id: "loli", name: "萝莉", pitch: 1.48, rate: 1.14, prefer: ["yaoyao", "xiaoyi", "huipo"] },
+    { id: "dia", name: "嗲嗲", pitch: 1.62, rate: 0.92, prefer: ["yaoyao", "huihui", "xiaoyi"] },
+    { id: "dahai", name: "大海", pitch: 0.48, rate: 0.68, prefer: ["huihui", "xiaoxiao", "yaoyao"] },
     { id: "dashu", name: "大叔", pitch: 0.62, rate: 0.84, prefer: ["kangkang", "yunxi", "yunjian"] },
     { id: "youth", name: "青年", pitch: 1.08, rate: 1.02, prefer: ["kangkang", "yunyang", "huihui"] }
   ];
@@ -38,6 +40,21 @@
     if (type === "dashu" || type === "youth") return male || pool[0];
     return female || pool[0];
   }
+  function flavor(typeId, text) {
+    text = String(text || "");
+    if (typeId === "dia") {
+      text = text.replace(/，/g, "嘛，");
+      if (text.indexOf("杀") === 0) text = "杀掉人家啦，" + text.replace(/^杀，?/, "");
+      else if (!/[呀嘛哦呢啦]$/.test(text)) text += "呀";
+      return text;
+    }
+    if (typeId === "dahai") {
+      text = text.replace(/，/g, "……");
+      if (text.indexOf("杀") === 0) text = "慢慢杀掉……" + text.replace(/^杀，?/, "");
+      return text;
+    }
+    return text;
+  }
   function cardText(c) {
     if (!c) return "";
     if (c.joker) return c.jokerType === "big" ? "大王" : "小王";
@@ -49,13 +66,13 @@
   function speak(typeId, text) {
     if (!text || !w.speechSynthesis) return;
     const t = getType(typeId);
-    const u = new SpeechSynthesisUtterance(String(text));
+    const u = new SpeechSynthesisUtterance(flavor(typeId, text));
     const v = pickVoice(typeId);
     if (v) u.voice = v;
     u.lang = (v && v.lang) || "zh-CN";
     u.pitch = t.pitch;
     u.rate = t.rate;
-    u.volume = 1;
+    u.volume = typeId === "dahai" ? 0.88 : 1;
     try { speechSynthesis.cancel(); } catch (e) {}
     speechSynthesis.speak(u);
   }

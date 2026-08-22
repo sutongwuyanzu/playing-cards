@@ -20,14 +20,14 @@
 
   <div class="table-scene">
     <div class="seat w" id="seatL">
-      <div class="avatar" id="avL"></div>
+      <div class="av-wrap"><div class="avatar" id="avL"></div><div class="say" id="sayL"></div></div>
       <div class="nameplate"><span class="nm" id="nameL">东哥</span><span id="roleL"></span></div>
       <div class="fan"><i></i><i></i><i></i></div>
       <div class="cnt" style="font-size:12px;color:var(--gold-bright)"><span id="cntL">17</span> 张</div>
       <div class="played" id="playedL"></div>
     </div>
     <div class="seat e" id="seatR">
-      <div class="avatar" id="avR"></div>
+      <div class="av-wrap"><div class="avatar" id="avR"></div><div class="say" id="sayR"></div></div>
       <div class="nameplate"><span class="nm" id="nameR">阿兰</span><span id="roleR"></span></div>
       <div class="fan"><i></i><i></i><i></i></div>
       <div class="cnt" style="font-size:12px;color:var(--gold-bright)"><span id="cntR">17</span> 张</div>
@@ -38,17 +38,25 @@
       <div class="cards" id="centerCards"></div>
       <div class="landlord3" id="landlord3"></div>
     </div>
+    <button class="chat-fab" id="chatFab" title="牌桌闲话">言</button>
   </div>
 
   <div class="dock">
     <div class="me-row">
-      <div class="avatar you" id="youAv">你</div>
+      <div class="av-wrap"><div class="avatar you" id="youAv">你</div><div class="say" id="sayYou"></div></div>
       <div class="nameplate"><span class="nm" id="youName">你</span><span id="roleYou"></span></div>
     </div>
     <div class="hand" id="handArea"></div>
     <div id="controls"></div>
     <div id="bidBar"></div>
     <div class="msg" id="msg">灯亮了。点击下方按钮开局。</div>
+  </div>
+
+  <div class="chat-drawer" id="chat">
+    <div class="chatHead">牌桌闲话
+      <button class="btn btn-mute" id="chatClose" style="padding:4px 10px;font-size:12px;margin-left:auto">收起</button>
+    </div>
+    <div class="quick" id="quickPhrases"></div>
   </div>
 
   <div id="waitRoom" class="wait-room hidden">
@@ -555,6 +563,28 @@ function render(){
   else if(G.phase!=='bid') document.getElementById('controls').innerHTML='';
 }
 function setMsg(t){ document.getElementById('msg').textContent=t; }
+const DDZ_QUICK = ['大龙我是第一吗','听说你想跟我比比','我比你饿','就这？','稳了','你不行啊'];
+const DDZ_AI = ['呵呵','不服来战','少废话，看牌','操作呢','下把赢你'];
+function showBubble(seat, text){
+  const me = mySeat();
+  const elId = seat===me ? 'sayYou' : (seat===(me+1)%3 ? 'sayL' : 'sayR');
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(()=> el.classList.remove('show'), 3800);
+}
+function sendChat(text){
+  text = (text||'').trim(); if (!text) return;
+  showBubble(mySeat(), text);
+  if (room) room.send({ act:'chat', text });
+  else if (Math.random()<0.55){
+    const s = (mySeat()+1+Math.floor(Math.random()*2))%3;
+    const reply = DDZ_AI[Math.floor(Math.random()*DDZ_AI.length)];
+    setTimeout(()=> showBubble(s, reply), 700+Math.random()*900);
+  }
+}
 function layoutHand(el, n){
   if(!el || n<2) { if(el) el.style.setProperty('--overlap','0px'); return; }
   const w = el.clientWidth || 360;
@@ -624,7 +654,15 @@ function bindRoom(r){
       room.publishLobby(lobby);
     }
   });
-  r.on('act', handleAct);
+  r.on('act', msg => {
+    if (msg.act==='chat' && msg.from!==NightNet.pid){
+      let s = -1;
+      if (lobby) s = lobby.seats.findIndex(x => x.kind==='human' && x.id===msg.id);
+      if (s>=0) showBubble(s, msg.text);
+      return;
+    }
+    handleAct(msg);
+  });
 }
 function renderWait(){
   if (!lobby) return;
@@ -749,6 +787,12 @@ document.getElementById('randSeatChk').onchange = ()=>{
   lobby.cfg.randomSeats=document.getElementById('randSeatChk').checked;
   if (room) room.publishLobby(lobby);
 };
+document.getElementById('chatFab').onclick = () => document.getElementById('chat').classList.add('open');
+document.getElementById('chatClose').onclick = () => document.getElementById('chat').classList.remove('open');
+const qw = document.getElementById('quickPhrases');
+DDZ_QUICK.forEach(q=>{
+  const b=document.createElement('button'); b.textContent=q; b.onclick=()=>sendChat(q); qw.appendChild(b);
+});
 const q = new URLSearchParams(location.search);
 const roomQ=(q.get('room')||'').toUpperCase();
 if (roomQ) joinOnline(roomQ);

@@ -27,17 +27,17 @@
 
   <div class="table-scene" id="table">
     <div class="seat n" id="seat2">
-      <div class="avatar" id="av2"></div>
+      <div class="av-wrap"><div class="avatar" id="av2"></div><div class="say" id="say2"></div></div>
       <div class="nameplate"><span class="nm" id="nm2">对家</span><span class="cnt" id="cnt2"></span></div>
       <div class="played" id="pl2"></div>
     </div>
     <div class="seat e" id="seat1">
-      <div class="avatar" id="av1"></div>
+      <div class="av-wrap"><div class="avatar" id="av1"></div><div class="say" id="say1"></div></div>
       <div class="nameplate"><span class="nm" id="nm1">右家</span><span class="cnt" id="cnt1"></span></div>
       <div class="played" id="pl1"></div>
     </div>
     <div class="seat w" id="seat3">
-      <div class="avatar" id="av3"></div>
+      <div class="av-wrap"><div class="avatar" id="av3"></div><div class="say" id="say3"></div></div>
       <div class="nameplate"><span class="nm" id="nm3">左家</span><span class="cnt" id="cnt3"></span></div>
       <div class="played" id="pl3"></div>
     </div>
@@ -47,7 +47,7 @@
 
   <div class="dock">
     <div class="me-row">
-      <div class="avatar you" id="youAv">你</div>
+      <div class="av-wrap"><div class="avatar you" id="youAv">你</div><div class="say" id="say0"></div></div>
       <div class="nameplate" id="youPlate"><span class="nm" id="youName">你</span><span class="cnt" id="cnt0"></span></div>
     </div>
     <div class="played" id="pl0" style="display:flex;justify-content:center;gap:3px;min-height:8px"></div>
@@ -57,6 +57,7 @@
       <button class="btn btn-ghost" id="hintBtn">提示</button>
       <button class="btn btn-mute" id="newBtn">新一局</button>
     </div>
+    <div id="declBar"></div>
     <div id="phaseTip" class="msg"></div>
   </div>
 
@@ -89,7 +90,7 @@
         </label>
         <label>区域
           <select id="regionSel">
-            <option>通用</option><option>江浙沪</option><option>川渝</option><option>广府</option><option>关东</option>
+            <option selected>北京</option><option>通用</option><option>江浙沪</option><option>川渝</option><option>广府</option><option>关东</option>
           </select>
         </label>
         <label>电脑人数
@@ -117,7 +118,7 @@
 <div id="gate" class="overlay show">
   <div class="modal room-modal">
     <h2>打升级</h2>
-    <p>四人一桌。可选 1 副或 2 副，真人与电脑混坐，满人换座，房间码一起打。</p>
+    <p>四人一桌。默认北京打法：从 2 打起，一张一张发，抽到级牌可亮主，该花色都是主。</p>
     <div class="gate-actions">
       <button class="btn btn-gold" id="btnCreate">创建房间</button>
       <button class="btn btn-ghost" id="btnSolo">电脑开桌</button>
@@ -355,6 +356,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
 
 (function(){
   const REGIONS = {
+    '北京':   {decks:2, allowNoTrump:false, allowRob:true,  kitty:'flat',   start:'2', dealLive:true},
     '通用':   {decks:2, allowNoTrump:true,  allowRob:true,  kitty:'flat',   start:'2'},
     '江浙沪': {decks:2, allowNoTrump:true,  allowRob:true,  kitty:'double', start:'2'},
     '川渝':   {decks:1, allowNoTrump:false, allowRob:false, kitty:'flat',   start:'2'},
@@ -363,7 +365,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   };
   const G = {
     level:'2', trump:{trumpSuit:null,level:'2',noTrump:false},
-    cfg:Object.assign({}, REGIONS['通用']),
+    cfg:Object.assign({}, REGIONS['北京']),
     hands:[[],[],[],[]], kitty:[], bottom:[], declarer:null,
     phase:'idle', turn:0, trickPlays:[], leadCards:null,
     trickNumber:0, totalTricks:25, teamPoints:[0,0], lastWinner:null,
@@ -423,10 +425,25 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     }
     el.scrollTop = el.scrollHeight;
   }
+  function seatByName(who){
+    for (let i=0;i<4;i++) if (seatName(i)===who) return i;
+    return mySeat();
+  }
+  function showBubble(seat, text){
+    if (seat==null || seat<0) return;
+    const v = (seat - mySeat() + 4) % 4;
+    const el = $('say'+v);
+    if (!el) return;
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(()=> el.classList.remove('show'), 3800);
+  }
   function sendChat(text, who){
     text = (text || '').trim(); if (!text) return;
     chatLog.push({ me: who === seatName(mySeat()), who, text });
     renderChat();
+    showBubble(seatByName(who), text);
     if (room) room.send({ act:'chat', text });
     else if (who === seatName(mySeat()) && Math.random() < 0.6){
       const rseat = [1,2,3][Math.floor(Math.random()*3)];
@@ -446,7 +463,10 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
       phase: G.phase, turn: G.turn, trickPlays: G.trickPlays, leadCards: G.leadCards,
       trickNumber: G.trickNumber, totalTricks: G.totalTricks,
       teamPoints: G.teamPoints, lastWinner: G.lastWinner,
-      pendingDeclare: G.pendingDeclare, _curDecl: G._curDecl
+      pendingDeclare: G.pendingDeclare, _curDecl: G._curDecl,
+      stock: G.stock, kittySize: G.kittySize, dealSeat: G.dealSeat,
+      dealPauseSeat: G.dealPauseSeat, dealPauseCard: G.dealPauseCard,
+      lastDealCard: G.lastDealCard, lastDealTo: G.lastDealTo
     };
   }
   function pub(){
@@ -456,22 +476,184 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
 
   function startGame(){
     clearTimers();
+    hideLiveDeclBar();
     G.trump = { trumpSuit:null, level:G.level, noTrump:false };
+    G.bottom = []; G.declarer = null;
+    G.trickPlays = []; G.leadCards = null; G.trickNumber = 0;
+    G.teamPoints = [0,0]; G.selected = [];
+    G.pendingDeclare = 0; G._curDecl = null;
+    G.stock = []; G.dealPauseSeat = null; G.dealPauseCard = null;
+    G.lastDealCard = null; G.lastDealTo = null;
+    $('log').innerHTML = '';
+    if (G.cfg.dealLive){
+      startLiveDeal();
+      return;
+    }
     const dealt = deal(G.cfg.decks);
     G.hands = dealt.hands;
     G.kitty = dealt.kitty;
-    G.bottom = []; G.declarer = null;
-    G.trickPlays = []; G.leadCards = null; G.trickNumber = 0;
     G.totalTricks = G.hands[0].length;
-    G.teamPoints = [0,0]; G.lastWinner = null; G.selected = [];
-    G.pendingDeclare = 0; G._curDecl = null;
-    $('log').innerHTML = '';
     log('发牌完成：'+G.cfg.decks+' 副牌，每人 '+G.hands[0].length+' 张。打 <b>'+G.level+'</b> 级，区域：'+regionName()+'。');
     renderAll();
     if (isHost()) runDeclare();
   }
+  function startLiveDeal(){
+    const decks = G.cfg.decks || 2;
+    G.kittySize = decks === 1 ? 2 : 8;
+    G.stock = shuffle(buildDeck(decks));
+    G.hands = [[],[],[],[]];
+    G.kitty = [];
+    G.phase = 'deal';
+    G.dealSeat = (G.lastWinner != null) ? G.lastWinner : 0;
+    G.lastWinner = G.lastWinner != null ? G.lastWinner : null;
+    log('北京打法：从 <b>'+G.level+'</b> 打起，一张一张发。抽到 '+G.level+' 可亮主，该花色都是主；对'+G.level+'可反主。');
+    $('phaseTip').textContent = '抽牌中… 拿到 '+G.level+' 可亮主';
+    setChatWait(true, '发牌中，可以闲话');
+    pub();
+    if (isHost()) dealNext();
+  }
+  function dealNext(){
+    if (!isHost()) return;
+    if (!G.stock || G.stock.length <= (G.kittySize||0)){
+      G.kitty = (G.stock||[]).slice();
+      G.stock = [];
+      finishLiveDeal();
+      return;
+    }
+    const seat = G.dealSeat;
+    const card = G.stock.shift();
+    G.hands[seat].push(card);
+    G.lastDealCard = card;
+    G.lastDealTo = seat;
+    G.dealSeat = (seat + 1) % 4;
+    const can = canLiveDeclare(seat, card);
+    pub();
+    if (can) pauseLiveDeclare(seat, card);
+    else setTimeout(dealNext, 55);
+  }
+  function canLiveDeclare(seat, card){
+    const lvl = G.level;
+    if (card.joker) return !!G.cfg.allowNoTrump;
+    if (card.rank !== lvl) return false;
+    const pair = G.hands[seat].filter(c => !c.joker && c.rank===lvl && c.suit===card.suit).length >= 2;
+    if (!G._curDecl) return true;
+    if (!G.cfg.allowRob) return false;
+    return betterDecl({ suit:card.suit, pair:pair, owner:seat }, G._curDecl);
+  }
+  function pauseLiveDeclare(seat, card){
+    G.phase = 'deal-declare';
+    G.dealPauseSeat = seat;
+    G.dealPauseCard = card;
+    $('phaseTip').textContent = seatName(seat)+' 抽到 '+describe([card])+'，可亮主';
+    pub();
+    if (isAiSeat(seat)){
+      setTimeout(()=>{
+        aiLiveDeclare(seat, card);
+        resumeLiveDeal();
+      }, 360);
+    } else if (seat === mySeat()){
+      showLiveDeclBar(seat, card);
+      clearTimers();
+      G.timerTo = setTimeout(()=>{ hideLiveDeclBar(); resumeLiveDeal(); }, 6000);
+    } else {
+      clearTimers();
+      G.timerTo = setTimeout(()=> resumeLiveDeal(), 6000);
+    }
+  }
+  function resumeLiveDeal(){
+    hideLiveDeclBar();
+    G.phase = 'deal';
+    G.dealPauseSeat = null;
+    G.dealPauseCard = null;
+    $('phaseTip').textContent = '抽牌中… 拿到 '+G.level+' 可亮主';
+    pub();
+    setTimeout(dealNext, 40);
+  }
+  function aiLiveDeclare(seat, card){
+    const lvl = G.level;
+    if (card.joker && G.cfg.allowNoTrump && Math.random() < 0.3){
+      const d = { noTrump:true, owner:seat };
+      applyDeclare(d); announceDecl(seat, d); return;
+    }
+    if (card.rank !== lvl || card.joker) return;
+    const pair = G.hands[seat].filter(c => !c.joker && c.rank===lvl && c.suit===card.suit).length >= 2;
+    const d = { suit:card.suit, pair:pair, owner:seat };
+    if (!G._curDecl){
+      if (Math.random() < 0.72){ applyDeclare(d); announceDecl(seat, d); }
+      return;
+    }
+    if (G.cfg.allowRob && betterDecl(d, G._curDecl) && (pair || Math.random()<0.25)){
+      applyDeclare(d); announceDecl(seat, d);
+    }
+  }
+  function announceDecl(seat, d){
+    const txt = d.noTrump ? '亮无主' : ((d.pair ? '反主 ' : '亮主 ') + d.suit + (d.pair?'对':''));
+    log(seatName(seat)+' '+txt + (d.noTrump?'':('，'+d.suit+' 花色都是主')));
+    showBubble(seat, txt);
+    toast(seatName(seat)+' '+txt);
+  }
+  function hideLiveDeclBar(){
+    const bar = $('declBar');
+    if (bar){ bar.style.display='none'; bar.innerHTML=''; }
+  }
+  function showLiveDeclBar(seat, card){
+    const bar = $('declBar');
+    if (!bar || !card) return;
+    const lvl = G.level;
+    const pair = !card.joker && G.hands[seat].filter(c => !c.joker && c.rank===lvl && c.suit===card.suit).length >= 2;
+    let html = '<span class="decl-lab">抽到 '+describe([card])+'</span>';
+    if (card.joker && G.cfg.allowNoTrump){
+      html += '<button class="btn btn-gold" data-act="notrump">亮无主</button>';
+    } else if (card.rank===lvl){
+      const lab = (G._curDecl && pair) ? ('反主 '+card.suit+' 对') : ('亮 '+card.suit);
+      html += '<button class="btn btn-gold" data-act="suit">'+lab+'</button>';
+    }
+    html += '<button class="btn btn-mute" data-act="pass">过</button>';
+    bar.innerHTML = html;
+    bar.style.display = 'flex';
+    bar.querySelectorAll('button').forEach(b=>{
+      b.onclick = ()=>{
+        const act = b.dataset.act;
+        let d = null;
+        if (act==='suit') d = { suit:card.suit, pair:pair };
+        else if (act==='notrump') d = { noTrump:true };
+        liveCommit(d, seat);
+      };
+    });
+  }
+  function liveCommit(d, owner){
+    if (!isHost()){
+      if (room) room.send({ act:'live-decl', d:d });
+      hideLiveDeclBar();
+      return;
+    }
+    clearTimers();
+    if (d){
+      const dd = Object.assign({}, d, { owner: owner!=null?owner:mySeat() });
+      applyDeclare(dd);
+      announceDecl(dd.owner, dd);
+    }
+    resumeLiveDeal();
+  }
+  function finishLiveDeal(){
+    hideLiveDeclBar();
+    G.totalTricks = G.hands[0].length;
+    log('发完：每人 '+G.hands[0].length+' 张，底 '+G.kitty.length+' 张。打 <b>'+G.level+'</b>。');
+    if (G.trump.trumpSuit===null && !G.trump.noTrump){
+      const k = G.kitty[0];
+      if (k && k.joker){ G.trump.noTrump = true; }
+      else if (k){ G.trump.trumpSuit = k.suit; }
+      G.declarer = G.declarer != null ? G.declarer : 0;
+      log('无人亮主 → 翻底牌定主：'+(G.trump.noTrump?'无主':(G.trump.trumpSuit+' 主')));
+    }
+    finishDeclare();
+  }
   function regionName(){
-    return Object.keys(REGIONS).find(k=>REGIONS[k].kitty===G.cfg.kitty && REGIONS[k].start===G.cfg.start && REGIONS[k].allowRob===G.cfg.allowRob) || ('自定义('+G.cfg.decks+'副)');
+    return Object.keys(REGIONS).find(k=>{
+      const r = REGIONS[k];
+      return r.start===G.cfg.start && r.allowRob===G.cfg.allowRob && r.kitty===G.cfg.kitty
+        && !!r.dealLive===!!G.cfg.dealLive && r.allowNoTrump===G.cfg.allowNoTrump;
+    }) || ('自定义('+G.cfg.decks+'副)');
   }
   function applyCfgFromUI(){
     const region = $('regionSel').value;
@@ -525,7 +707,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   function betterDecl(a,b){
     const sa=declareStrength(a), sb=declareStrength(b);
     if (sa!==sb) return sa>sb;
-    return true;
+    return false;
   }
   function applyDeclare(d){
     if (!G.cfg.allowRob && G._curDecl) return;
@@ -592,6 +774,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   }
   function finishDeclare(){
     G._curDecl = null;
+    if (G.declarer==null) G.declarer = 0;
     if (G.trump.trumpSuit===null && !G.trump.noTrump){ G.trump.trumpSuit='♠'; }
     $('lvlPill').textContent = G.level;
     $('trumpPill').textContent = '主牌：' + (G.trump.noTrump?'无主':G.trump.trumpSuit);
@@ -606,6 +789,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     G.bottom = discard;
     G.hands[G.declarer] = G.hands[G.declarer].filter(c=>!discard.includes(c));
     G.kitty = [];
+    G.totalTricks = G.hands[0].length;
     log('庄家扣底 '+discard.length+' 张（含分 '+trickPoints(discard)+' 分）。');
     G.phase='play'; G.turn=G.declarer; G.trickPlays=[]; G.leadCards=null;
     nextTurn();
@@ -749,7 +933,8 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   function setAv(el, seat, you){
     const st = lobby && lobby.seats[seat];
     el.classList.toggle('you', !!(you || !st || st.kind!=='ai'));
-    el.classList.toggle('active', G.turn===seat && G.phase!=='over' && G.phase!=='idle');
+    const dealing = (G.phase==='deal' || G.phase==='deal-declare');
+    el.classList.toggle('active', dealing ? seat===G.lastDealTo : (G.turn===seat && G.phase!=='over' && G.phase!=='idle'));
     if (st && st.kind==='ai' && st.avatar){
       el.style.backgroundImage = 'url('+st.avatar+')';
       el.textContent = '';
@@ -775,7 +960,8 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
         const seatEl = $('seat'+v);
         seatEl.classList.toggle('team0', teamOf(s)===0);
         seatEl.classList.toggle('team1', teamOf(s)===1);
-        seatEl.classList.toggle('active', G.turn===s && G.phase!=='over' && G.phase!=='idle');
+        const dealing = (G.phase==='deal' || G.phase==='deal-declare');
+        seatEl.classList.toggle('active', dealing ? s===G.lastDealTo : (G.turn===s && G.phase!=='over' && G.phase!=='idle'));
         setAv($('av'+v), s, false);
         $('nm'+v).textContent = seatName(s);
       }
@@ -831,6 +1017,14 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   function renderTrickArea(){
     const area=$('trickArea');
     if (!area) return;
+    if (G.phase==='deal' || G.phase==='deal-declare'){
+      if (G.lastDealCard){
+        area.innerHTML = '<div class="who">发给 '+seatName(G.lastDealTo)+'</div>'+cardHTML(G.lastDealCard,'small');
+      } else {
+        area.innerHTML = '<div class="who">从'+G.level+'打起 · 一张一张抽</div>';
+      }
+      return;
+    }
     area.innerHTML = '';
   }
   function hint(){
@@ -875,6 +1069,10 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
       if (msg.act==='chat' && msg.from!==NightNet.pid){
         chatLog.push({ me:false, who: msg.nick||'友人', text: msg.text });
         renderChat();
+        let s = -1;
+        if (lobby) s = lobby.seats.findIndex(x => x.kind==='human' && x.id===msg.id);
+        if (s<0) s = seatByName(msg.nick||'友人');
+        showBubble(s, msg.text);
         return;
       }
       if (!isHost()) return;
@@ -887,7 +1085,9 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     G.selected = (G.turn===mySeat()) ? keepSel : [];
     hideWaitPlay();
     if ((G.phase==='declare-human'||G.phase==='declare-wait') && G.pendingDeclare===mySeat()) showDeclareUI();
-    else if (G.phase==='over'){
+    else if (G.phase==='deal-declare' && G.dealPauseSeat===mySeat()) showLiveDeclBar(G.dealPauseSeat, G.dealPauseCard);
+    else hideLiveDeclBar();
+    if (G.phase==='over'){
       const t0=G.teamPoints[0], t1=G.teamPoints[1];
       const winner = t0>t1?0:1;
       let html = '<h2>'+(winner===mySeat()%2?'你方胜':'对方胜')+'</h2>';
@@ -919,6 +1119,12 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
       const seat = lobby.seats.findIndex(s=>s.kind==='human' && s.id===msg.id);
       if (seat!==G.pendingDeclare) return;
       commitDeclare(msg.d, seat);
+      return;
+    }
+    if (msg.act==='live-decl' && G.phase==='deal-declare'){
+      const seat = lobby.seats.findIndex(s=>s.kind==='human' && s.id===msg.id);
+      if (seat!==G.dealPauseSeat) return;
+      liveCommit(msg.d, seat);
       return;
     }
     if (msg.act==='play'){

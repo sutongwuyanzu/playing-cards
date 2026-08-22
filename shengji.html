@@ -17,6 +17,7 @@
     <span class="pill" id="trumpPill">主牌：未定</span>
     <span class="pill">蓝<b id="t0">0</b> : 红<b id="t1">0</b></span>
     <span class="pill" id="cfgPill">通用 · 2副</span>
+    <span class="pill hidden" id="roomPill"></span>
     <span class="spacer"></span>
     <div id="timerWrap">
       <div id="timerbarOuter"><div id="timerbar"></div></div>
@@ -24,32 +25,20 @@
     </div>
   </header>
 
-  <div class="setup" id="setupBar">
-    <span>副数</span>
-    <label><input type="radio" name="decks" value="1">1副</label>
-    <label><input type="radio" name="decks" value="2" checked>2副</label>
-    <span>区域</span>
-    <select id="regionSel">
-      <option>通用</option><option>江浙沪</option><option>川渝</option><option>广府</option><option>关东</option>
-    </select>
-    <button class="btn btn-gold" id="startBtn" style="padding:6px 14px">开桌</button>
-    <button class="btn btn-ghost" id="inviteBtn" style="padding:6px 12px;font-size:12px">邀请</button>
-  </div>
-
   <div class="table-scene" id="table">
-    <div class="seat n team0" id="seat2">
-      <img class="avatar" src="assets/avatars/alan.jpg" alt="">
-      <div class="nameplate"><span class="nm">阿兰</span><span class="cnt" id="cnt2"></span></div>
+    <div class="seat n" id="seat2">
+      <div class="avatar" id="av2"></div>
+      <div class="nameplate"><span class="nm" id="nm2">对家</span><span class="cnt" id="cnt2"></span></div>
       <div class="played" id="pl2"></div>
     </div>
-    <div class="seat e team1" id="seat1">
-      <img class="avatar" src="assets/avatars/dongge.jpg" alt="">
-      <div class="nameplate"><span class="nm">东哥</span><span class="cnt" id="cnt1"></span></div>
+    <div class="seat e" id="seat1">
+      <div class="avatar" id="av1"></div>
+      <div class="nameplate"><span class="nm" id="nm1">右家</span><span class="cnt" id="cnt1"></span></div>
       <div class="played" id="pl1"></div>
     </div>
-    <div class="seat w team1" id="seat3">
-      <img class="avatar" src="assets/avatars/laozhou.jpg" alt="">
-      <div class="nameplate"><span class="nm">老周</span><span class="cnt" id="cnt3"></span></div>
+    <div class="seat w" id="seat3">
+      <div class="avatar" id="av3"></div>
+      <div class="nameplate"><span class="nm" id="nm3">左家</span><span class="cnt" id="cnt3"></span></div>
       <div class="played" id="pl3"></div>
     </div>
     <div class="felt-center"><div id="trickArea" class="cards"></div></div>
@@ -59,7 +48,7 @@
   <div class="dock">
     <div class="me-row">
       <div class="avatar you" id="youAv">你</div>
-      <div class="nameplate team0"><span class="nm" id="youName">你</span><span class="cnt" id="cnt0"></span></div>
+      <div class="nameplate" id="youPlate"><span class="nm" id="youName">你</span><span class="cnt" id="cnt0"></span></div>
     </div>
     <div class="played" id="pl0" style="display:flex;justify-content:center;gap:3px;min-height:8px"></div>
     <div class="handbar" id="hand"></div>
@@ -82,13 +71,68 @@
       <button class="btn btn-gold" id="chatSend" style="padding:8px 14px">发送</button>
     </div>
   </div>
+
+  <div id="waitRoom" class="wait-room hidden">
+    <div class="wait-inner">
+      <div class="wait-head">
+        <div>
+          <div class="kicker"><span class="net-dot" id="netDot"></span><span id="netStatus">本机房间</span></div>
+          <h2>房间 <span class="code-xl" id="roomCodeTxt">------</span></h2>
+        </div>
+        <button class="btn btn-gold" id="copyRoom" style="padding:8px 12px">邀请好友</button>
+      </div>
+      <div class="wait-table" id="waitSeats"></div>
+      <p class="wait-hint" id="waitHint">点座位换座。房主再点同一座位：电脑 ↔ 等人。</p>
+      <div class="cfg-grid" id="waitCfg">
+        <label>副数
+          <select id="decksSel"><option value="1">1 副</option><option value="2" selected>2 副</option></select>
+        </label>
+        <label>区域
+          <select id="regionSel">
+            <option>通用</option><option>江浙沪</option><option>川渝</option><option>广府</option><option>关东</option>
+          </select>
+        </label>
+        <label>电脑人数
+          <select id="aiCountSel">
+            <option value="0">0 · 全真人</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3" selected>3 · 电脑补位</option>
+          </select>
+        </label>
+        <label><input type="checkbox" id="randSeatChk"> 开局随机座位</label>
+      </div>
+      <div class="wait-actions">
+        <button class="btn btn-gold" id="btnBegin">开局</button>
+        <button class="btn btn-ghost" id="btnBackGate">返回</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="log" class="log" style="display:none"></div>
 <div class="toast" id="toast"></div>
-<div id="overlay"><div class="modal" id="modal"></div></div>
+<div id="overlay" class="overlay"><div class="modal" id="modal"></div></div>
 
+<div id="gate" class="overlay show">
+  <div class="modal room-modal">
+    <h2>打升级</h2>
+    <p>四人一桌。可选 1 副或 2 副，真人与电脑混坐，满人换座，房间码一起打。</p>
+    <div class="gate-actions">
+      <button class="btn btn-gold" id="btnCreate">创建房间</button>
+      <button class="btn btn-ghost" id="btnSolo">电脑开桌</button>
+    </div>
+    <div class="join-row">
+      <input id="joinCode" class="room-input" maxlength="6" placeholder="房间码" autocomplete="off">
+      <button class="btn btn-lacquer" id="btnJoin">加入</button>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/mqtt.min.js"></script>
 <script src="js/hall.js"></script>
+<script src="js/music.js"></script>
+<script src="js/net.js"></script>
 <script>
 const SUITS = ['♠','♥','♣','♦'];
 const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
@@ -152,11 +196,18 @@ function sortHand(hand, trump){
   });
 }
 function isPair(cards){
-  return cards.length === 2 && cards[0].suit === cards[1].suit && cards[0].rank === cards[1].rank;
+  if (cards.length !== 2) return false;
+  if (cards[0].joker || cards[1].joker){
+    return cards[0].joker && cards[1].joker && cards[0].jokerType === cards[1].jokerType;
+  }
+  return cards[0].suit === cards[1].suit && cards[0].rank === cards[1].rank;
 }
 function getPairs(hand){
   const m = {};
-  for (const c of hand){ const k = c.suit + c.rank; (m[k] = m[k] || []).push(c); }
+  for (const c of hand){
+    const k = c.joker ? ('J'+c.jokerType) : (c.suit + c.rank);
+    (m[k] = m[k] || []).push(c);
+  }
   const res = [];
   for (const k in m) if (m[k].length >= 2) res.push([m[k][0], m[k][1]]);
   return res;
@@ -196,7 +247,7 @@ function getValidPlays(hand, leadCards, trump){
 }
 function comb2(arr){
   const r = [];
-  for (let i=0;i<arr.length;i++) for (let j=i+1;j<arr.length;j++) r.push([arr[i],arr[j]]);
+  for (let i=0;i<arr.length;i++) for (let j=i+1;j<arr.length;j++) r.push([arr[i], arr[j]]);
   return r;
 }
 function isLegalPlay(hand, selected, leadCards, trump){
@@ -321,7 +372,28 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   };
   const $ = id => document.getElementById(id);
   const teamOf = s => s % 2;
-  const SEAT_NAME = [NightHall.nick(), '东哥', '阿兰', '老周'];
+  let room = null;
+  let lobby = null;
+  let pickSeat = -1;
+  let solo = false;
+
+  function isHost(){ return !room || room.isHost(); }
+  function mySeat(){
+    if (!lobby) return 0;
+    const i = lobby.seats.findIndex(s => s.kind==='human' && s.id === NightNet.pid);
+    return i >= 0 ? i : 0;
+  }
+  function isAiSeat(s){
+    const st = lobby && lobby.seats[s];
+    return !st || st.kind !== 'human';
+  }
+  function seatName(s){
+    const st = lobby && lobby.seats[s];
+    if (!st || st.kind==='empty') return '空位';
+    if (st.kind==='ai') return st.name;
+    return st.nick || '过客';
+  }
+  function canon(view){ return (mySeat() + view) % 4; }
 
   function log(msg){ const el=$('log'); el.innerHTML += '<div>'+msg+'</div>'; el.scrollTop = el.scrollHeight; }
   function toast(msg){ NightHall.toast(msg); }
@@ -331,7 +403,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   }
   function cardHTML(c, cls){
     const extra = cls||'';
-    if (c.joker) return `<div class="pcard joker ${c.jokerType==='big'?'red':'black'} ${extra}">${c.jokerType==='big'?'大':'小'}<br>王</div>`;
+    if (c.joker) return `<div class="pcard joker ${c.jokerType==='big'?'red':'black'} ${extra}" data-id="${c.id}">${c.jokerType==='big'?'大':'小'}<br>王</div>`;
     const red = (c.suit==='♥'||c.suit==='♦') ? 'red' : 'black';
     return `<div class="pcard ${red} ${extra}" data-id="${c.id}"><span class="rk">${c.rank}</span><span class="su">${c.suit}</span><span class="pip">${c.suit}</span></div>`;
   }
@@ -353,17 +425,33 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   }
   function sendChat(text, who){
     text = (text || '').trim(); if (!text) return;
-    chatLog.push({ me: who === SEAT_NAME[0], who, text });
+    chatLog.push({ me: who === seatName(mySeat()), who, text });
     renderChat();
-    if (who === SEAT_NAME[0] && Math.random() < 0.6){
+    if (room) room.send({ act:'chat', text });
+    else if (who === seatName(mySeat()) && Math.random() < 0.6){
       const rseat = [1,2,3][Math.floor(Math.random()*3)];
       const reply = AI_REPLIES[Math.floor(Math.random()*AI_REPLIES.length)];
-      setTimeout(()=>{ sendChat(reply, SEAT_NAME[rseat]); }, 700 + Math.random()*1300);
+      setTimeout(()=>{ sendChat(reply, seatName(rseat)); }, 700 + Math.random()*1300);
     }
   }
   function setChatWait(on, text){
     const w = $('chatWait');
     w.textContent = on ? (text || '等待中，可以闲话') : '';
+  }
+
+  function snapG(){
+    return {
+      level: G.level, trump: G.trump, cfg: G.cfg,
+      hands: G.hands, kitty: G.kitty, bottom: G.bottom, declarer: G.declarer,
+      phase: G.phase, turn: G.turn, trickPlays: G.trickPlays, leadCards: G.leadCards,
+      trickNumber: G.trickNumber, totalTricks: G.totalTricks,
+      teamPoints: G.teamPoints, lastWinner: G.lastWinner,
+      pendingDeclare: G.pendingDeclare, _curDecl: G._curDecl
+    };
+  }
+  function pub(){
+    renderAll();
+    if (room && isHost()) room.publishState(snapG());
   }
 
   function startGame(){
@@ -380,36 +468,52 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     $('log').innerHTML = '';
     log('发牌完成：'+G.cfg.decks+' 副牌，每人 '+G.hands[0].length+' 张。打 <b>'+G.level+'</b> 级，区域：'+regionName()+'。');
     renderAll();
-    runDeclare();
+    if (isHost()) runDeclare();
   }
-  function regionName(){ return Object.keys(REGIONS).find(k=>JSON.stringify(REGIONS[k])===JSON.stringify(G.cfg)) || ('自定义('+G.cfg.decks+'副)'); }
-  function applyConfig(){
+  function regionName(){
+    return Object.keys(REGIONS).find(k=>REGIONS[k].kitty===G.cfg.kitty && REGIONS[k].start===G.cfg.start && REGIONS[k].allowRob===G.cfg.allowRob) || ('自定义('+G.cfg.decks+'副)');
+  }
+  function applyCfgFromUI(){
     const region = $('regionSel').value;
-    const decks = parseInt(document.querySelector('input[name=decks]:checked').value,10);
+    const decks = parseInt($('decksSel').value,10);
     G.cfg = Object.assign({}, REGIONS[region]);
     G.cfg.decks = decks;
     G.level = G.cfg.start;
+    if (lobby){
+      lobby.cfg.decks = decks;
+      lobby.cfg.region = region;
+      lobby.cfg.randomSeats = $('randSeatChk').checked;
+      lobby.cfg.aiCount = parseInt($('aiCountSel').value,10);
+    }
     $('cfgPill').textContent = region+' · '+decks+'副';
   }
 
   function runDeclare(){
-    G.phase = 'declare';
     if (G.pendingDeclare >= 4){
       if (G.trump.trumpSuit === null && !G.trump.noTrump){
         const k = G.kitty[0];
         if (k.joker){ G.trump.noTrump = true; }
         else { G.trump.trumpSuit = k.suit; }
         G.declarer = 0;
-        log('无人亮主 → 翻底牌定主：' + (G.trump.noTrump?'无主':(G.trump.trumpSuit+' 主')) + '。庄家=你');
+        log('无人亮主 → 翻底牌定主：' + (G.trump.noTrump?'无主':(G.trump.trumpSuit+' 主')) + '。庄家='+seatName(0));
       }
       finishDeclare();
       return;
     }
     const seat = G.pendingDeclare;
-    if (seat === 0){ showDeclareUI(); }
-    else {
-      setChatWait(true, '等待 '+SEAT_NAME[seat]+' 亮主…可闲话');
+    if (isAiSeat(seat)){
+      G.phase = 'declare';
+      setChatWait(true, '等待 '+seatName(seat)+' 亮主…可闲话');
+      pub();
       setTimeout(()=>{ aiDeclare(seat); G.pendingDeclare++; runDeclare(); }, 700);
+    } else {
+      G.phase = 'declare-human';
+      pub();
+      if (seat === mySeat()) showDeclareUI();
+      else {
+        setChatWait(true, '等待 '+seatName(seat)+' 亮主…');
+        $('phaseTip').textContent = '等待 '+seatName(seat)+' 亮主';
+      }
     }
   }
   function declareStrength(d){
@@ -446,17 +550,32 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
         for (const s of SUITS){ if (suitPairs[s]>=1){ best={suit:s,pair:false,owner:seat}; break; } }
       }
     }
-    if (best){ applyDeclare(best); log(SEAT_NAME[seat]+' 亮主：'+(best.noTrump?'无主':best.suit+(best.pair?'对':'') )); }
-    else log(SEAT_NAME[seat]+' 不亮');
+    if (best){ applyDeclare(best); log(seatName(seat)+' 亮主：'+(best.noTrump?'无主':best.suit+(best.pair?'对':'') )); }
+    else log(seatName(seat)+' 不亮');
+  }
+  function commitDeclare(d, owner){
+    if (!isHost()){
+      if (room) room.send({ act:'declare', d: d ? Object.assign({}, d, {owner: mySeat()}) : null });
+      $('overlay').classList.remove('show');
+      return;
+    }
+    if (d){
+      applyDeclare(Object.assign({}, d, {owner: owner!=null?owner:mySeat()}));
+      log(seatName(owner!=null?owner:mySeat())+' 亮主：'+(d.noTrump?'无主':d.suit+(d.pair?'对':'')));
+    } else log(seatName(owner!=null?owner:mySeat())+' 不亮');
+    $('overlay').classList.remove('show');
+    G.pendingDeclare++;
+    runDeclare();
   }
   function showDeclareUI(){
     G.phase='declare-human';
     setChatWait(false);
     const lvl = G.level;
-    const lvlCards = G.hands[0].filter(c=>c.rank===lvl);
+    const me = mySeat();
+    const lvlCards = G.hands[me].filter(c=>c.rank===lvl);
     const suitCnt={}; SUITS.forEach(s=>suitCnt[s]=0);
     for (const c of lvlCards){ if (c.suit) suitCnt[c.suit]++; }
-    const hasJoker = G.hands[0].some(c=>c.joker);
+    const hasJoker = G.hands[me].some(c=>c.joker);
     let html = '<h2>亮主</h2><p>你持有 <b>'+lvl+'</b> 级牌，可亮主'+(G.cfg.allowNoTrump?'或无主':'')+'。</p><div class="declareBtns">';
     for (const s of SUITS){ if (suitCnt[s]>=1){ html += `<button class="btn btn-ghost" data-act="suit" data-suit="${s}">亮 ${s}${suitCnt[s]>=2?'（对）':''}</button>`; } }
     if (hasJoker && G.cfg.allowNoTrump) html += `<button class="btn btn-ghost" data-act="notrump">亮 无主</button>`;
@@ -465,11 +584,9 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     $('modal').querySelectorAll('button').forEach(b=>{
       b.onclick = ()=>{
         const act=b.dataset.act;
-        if (act==='suit'){ applyDeclare({suit:b.dataset.suit, pair:suitCnt[b.dataset.suit]>=2, owner:0}); log('你 亮主：'+b.dataset.suit+(suitCnt[b.dataset.suit]>=2?'对':'')); }
-        else if (act==='notrump'){ applyDeclare({noTrump:true,owner:0}); log('你 亮主：无主'); }
-        else log('你 不亮');
-        $('overlay').classList.remove('show');
-        G.pendingDeclare++; runDeclare();
+        if (act==='suit') commitDeclare({suit:b.dataset.suit, pair:suitCnt[b.dataset.suit]>=2}, me);
+        else if (act==='notrump') commitDeclare({noTrump:true}, me);
+        else commitDeclare(null, me);
       };
     });
   }
@@ -478,7 +595,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     if (G.trump.trumpSuit===null && !G.trump.noTrump){ G.trump.trumpSuit='♠'; }
     $('lvlPill').textContent = G.level;
     $('trumpPill').textContent = '主牌：' + (G.trump.noTrump?'无主':G.trump.trumpSuit);
-    log('主牌确定为：<b>'+(G.trump.noTrump?'无主':G.trump.trumpSuit)+'</b>，庄家='+SEAT_NAME[G.declarer]);
+    log('主牌确定为：<b>'+(G.trump.noTrump?'无主':G.trump.trumpSuit)+'</b>，庄家='+seatName(G.declarer));
     G.hands[G.declarer] = G.hands[G.declarer].concat(G.kitty);
     const sorted = G.hands[G.declarer].slice().sort((a,b)=>{
       const ta=isT(a,G.trump)?1:0, tb=isT(b,G.trump)?1:0;
@@ -491,27 +608,36 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     G.kitty = [];
     log('庄家扣底 '+discard.length+' 张（含分 '+trickPoints(discard)+' 分）。');
     G.phase='play'; G.turn=G.declarer; G.trickPlays=[]; G.leadCards=null;
-    renderAll();
     nextTurn();
   }
 
   function nextTurn(){
-    renderAll();
     if (G.hands[0].length===0){ endGame(); return; }
     const seat = G.turn;
-    if (seat===0){
-      G.phase='play-human';
-      setChatWait(false);
-      $('phaseTip').textContent = G.leadCards? '跟牌：必须出 '+G.leadCards.length+' 张'+suitName(G.leadCards[0]) : '你领出（点牌选择，对子需选两张同点同花）';
+    if (!isAiSeat(seat)){
+      G.phase = 'play-human';
+      if (seat === mySeat()){
+        setChatWait(false);
+        $('phaseTip').textContent = G.leadCards? '跟牌：必须出 '+G.leadCards.length+' 张'+suitName(G.leadCards[0]) : '你领出（点牌选择，对子需选两张同点同花）';
+      } else {
+        setChatWait(true, '等待 '+seatName(seat)+' 出牌…');
+        $('phaseTip').textContent = '等待 '+seatName(seat)+' 出牌';
+      }
       startTimer();
-    } else {
-      G.phase='play-ai';
-      setChatWait(true, SEAT_NAME[seat]+' 思考中…可以闲话');
-      $('phaseTip').textContent = SEAT_NAME[seat]+' 思考中…';
+      pub();
+    } else if (isHost()){
+      G.phase = 'play-ai';
+      setChatWait(true, seatName(seat)+' 思考中…可以闲话');
+      $('phaseTip').textContent = seatName(seat)+' 思考中…';
+      pub();
       setTimeout(()=>{
         const cards = aiPlay(G.hands[seat], G.leadCards, G.trump, seat, { trickPlays: G.trickPlays });
         doPlay(seat, cards);
       }, 850);
+    } else {
+      G.phase = 'play-ai';
+      $('phaseTip').textContent = seatName(seat)+' 思考中…';
+      pub();
     }
   }
   function suitName(c){
@@ -533,27 +659,37 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   }
   function onTimeout(){
     clearTimers();
-    const cards = autoPlay(G.hands[0], G.leadCards, G.trump);
-    toast('超时，自动出最小牌：'+describe(cards));
-    log('你 超时，系统自动出：'+describe(cards));
-    doPlay(0, cards);
+    if (!isHost()) return;
+    if (G.phase!=='play-human' && G.phase!=='play-wait') return;
+    const seat = G.turn;
+    const cards = autoPlay(G.hands[seat], G.leadCards, G.trump);
+    toast('超时，自动出：'+describe(cards));
+    log(seatName(seat)+' 超时，系统自动出：'+describe(cards));
+    doPlay(seat, cards);
   }
   function clearTimers(){ if (G.timerInt) clearInterval(G.timerInt); if (G.timerTo) clearTimeout(G.timerTo); }
 
   function humanPlay(){
-    if (G.phase!=='play-human') return;
-    const sel = G.selected.map(id => G.hands[0].find(c=>c.id===id)).filter(Boolean);
+    if (G.turn !== mySeat()) return;
+    if (G.phase!=='play-human' && G.phase!=='play') return;
+    const me = mySeat();
+    const sel = G.selected.map(id => G.hands[me].find(c=>c.id===id)).filter(Boolean);
     if (!sel.length){ toast('请先选择要出的牌'); return; }
-    const ok = isLegalPlay(G.hands[0], sel, G.leadCards, G.trump);
+    const ok = isLegalPlay(G.hands[me], sel, G.leadCards, G.trump);
     if (!ok){ toast('出牌不合法：必须跟出相同花色 / 相同张数'); return; }
+    if (!isHost()){
+      if (room) room.send({ act:'play', ids: sel.map(c=>c.id) });
+      $('playBtn').disabled = true;
+      return;
+    }
     clearTimers();
-    doPlay(0, sel);
+    doPlay(me, sel);
   }
   function doPlay(seat, cards){
     G.selected = [];
     G.hands[seat] = G.hands[seat].filter(c=>!cards.find(x=>x.id===c.id));
     G.trickPlays.push({ seat, cards });
-    log(SEAT_NAME[seat]+' 出：'+describe(cards));
+    log(seatName(seat)+' 出：'+describe(cards));
     if (G.trickPlays.length===4){ resolveTrick(); }
     else {
       G.turn = (G.turn+1)%4;
@@ -575,8 +711,9 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     G.teamPoints[team] += pts;
     G.lastWinner = w;
     G.trickNumber++;
-    log('→ '+(team===0?'蓝队(你方)':'红队')+' 赢此圈，得 '+pts+' 分。');
-    renderAll();
+    log('→ '+(team===0?'蓝队':'红队')+' 赢此圈，得 '+pts+' 分。');
+    G.phase = 'trick-pause';
+    pub();
     setTimeout(()=>{
       G.trickPlays = []; G.leadCards = null; G.turn = w;
       if (G.hands[0].length===0){ endGame(); }
@@ -597,49 +734,87 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     let champion=false;
     if (idx>12){ idx=12; champion=true; }
     const newLevel = RANKS[idx];
-    let html = '<h2>'+(winner===0?'蓝队（你方）胜':'红队胜')+'</h2>';
+    let html = '<h2>'+(winner===mySeat()%2?'你方胜':'对方胜')+'</h2>';
     html += '<p>本局　蓝 <b>'+t0+'</b> : 红 <b>'+t1+'</b>（共 '+total+' 分）</p>';
     if (champion) html += '<p>已打过 A，通关。</p>';
-    else { html += '<p>升级：<b>'+G.level+'</b> → <b>'+newLevel+'</b></p>'; G.level=newLevel; }
-    html += '<button class="btn btn-gold" id="again">再来一局</button>';
+    else { html += '<p>升级：<b>'+G.level+'</b> → <b>'+newLevel+'</b></p>'; if (isHost()) G.level=newLevel; }
+    if (isHost()) html += '<button class="btn btn-gold" id="again">再来一局</button>';
+    else html += '<p>等待房主开下一局</p>';
     $('modal').innerHTML = html; $('overlay').classList.add('show');
-    $('again').onclick = ()=>{ $('overlay').classList.remove('show'); startGame(); };
+    const ag = $('again');
+    if (ag) ag.onclick = ()=>{ $('overlay').classList.remove('show'); startGame(); };
+    pub();
   }
 
-  function renderAll(){
-    for (let s=0;s<4;s++){
-      $('cnt'+s).textContent = G.hands[s].length+' 张';
-      const pl = G.trickPlays.find(p=>p.seat===s);
-      $('pl'+s).innerHTML = pl ? pl.cards.map(c=>cardHTML(c,'small')).join('') : '';
-      if (s!==0) $('seat'+s).classList.toggle('active', G.turn===s && G.phase!=='over' && G.phase!=='idle');
+  function setAv(el, seat, you){
+    const st = lobby && lobby.seats[seat];
+    el.classList.toggle('you', !!(you || !st || st.kind!=='ai'));
+    el.classList.toggle('active', G.turn===seat && G.phase!=='over' && G.phase!=='idle');
+    if (st && st.kind==='ai' && st.avatar){
+      el.style.backgroundImage = 'url('+st.avatar+')';
+      el.textContent = '';
+      el.classList.remove('you');
+    } else {
+      el.style.backgroundImage = '';
+      el.textContent = seatName(seat).slice(0,1);
     }
-    document.getElementById('youAv').classList.toggle('active', G.turn===0 && G.phase==='play-human');
+  }
+  function renderAll(){
+    const me = mySeat();
+    for (let v=0; v<4; v++){
+      const s = canon(v);
+      $('cnt'+v).textContent = (G.hands[s]||[]).length+' 张';
+      const pl = G.trickPlays.find(p=>p.seat===s);
+      $('pl'+v).innerHTML = pl ? pl.cards.map(c=>cardHTML(c,'small')).join('') : '';
+      if (v===0){
+        setAv($('youAv'), s, true);
+        $('youName').textContent = seatName(s);
+        $('youPlate').classList.toggle('team0', teamOf(s)===0);
+        $('youPlate').classList.toggle('team1', teamOf(s)===1);
+      } else {
+        const seatEl = $('seat'+v);
+        seatEl.classList.toggle('team0', teamOf(s)===0);
+        seatEl.classList.toggle('team1', teamOf(s)===1);
+        seatEl.classList.toggle('active', G.turn===s && G.phase!=='over' && G.phase!=='idle');
+        setAv($('av'+v), s, false);
+        $('nm'+v).textContent = seatName(s);
+      }
+    }
     $('t0').textContent = G.teamPoints[0];
     $('t1').textContent = G.teamPoints[1];
     $('lvlPill').textContent = G.level;
     $('trumpPill').textContent = '主牌：'+(G.trump.noTrump?'无主':(G.trump.trumpSuit||'未定'));
     renderHand();
     renderTrickArea();
-    $('playBtn').disabled = (G.phase!=='play-human');
-    $('hintBtn').disabled = (G.phase!=='play-human');
+    const myTurn = (G.turn===me) && (G.phase==='play-human' || G.phase==='play');
+    $('playBtn').disabled = !myTurn;
+    $('hintBtn').disabled = !myTurn;
+    $('playBtn').classList.toggle('btn-ready', myTurn && G.selected.length>0);
+    $('newBtn').style.display = isHost() ? '' : 'none';
   }
   function renderHand(){
     const wrap=$('hand'); wrap.innerHTML='';
-    const sorted = sortHand(G.hands[0], G.trump);
+    const me = mySeat();
+    const sorted = sortHand(G.hands[me]||[], G.trump);
     for (const c of sorted){
       const el = document.createElement('div');
       el.innerHTML = cardHTML(c,'');
       const node = el.firstChild;
       if (G.selected.includes(c.id)) node.classList.add('sel');
       node.onclick = ()=>{
-        if (G.phase!=='play-human') return;
+        if (G.turn !== me) return;
+        if (G.phase!=='play-human' && G.phase!=='play') return;
         const i = G.selected.indexOf(c.id);
         if (i>=0) G.selected.splice(i,1); else {
-          const cap = G.leadCards? G.leadCards.length : (G.selected.length>=1 && isPair(G.selected.map(id=>G.hands[0].find(x=>x.id===id)).concat([c]))?2:99);
+          const picked = G.selected.map(id=>G.hands[me].find(x=>x.id===id)).filter(Boolean);
+          const cap = G.leadCards? G.leadCards.length : (picked.length>=1 && isPair(picked.concat([c]))?2:99);
           if (G.selected.length>=cap) G.selected.shift();
           G.selected.push(c.id);
         }
         renderHand();
+        const myTurn = (G.turn===me);
+        $('playBtn').disabled = !myTurn;
+        $('playBtn').classList.toggle('btn-ready', myTurn && G.selected.length>0);
       };
       wrap.appendChild(node);
     }
@@ -659,39 +834,285 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     area.innerHTML = '';
   }
   function hint(){
-    if (G.phase!=='play-human') return;
-    const v = getValidPlays(G.hands[0], G.leadCards, G.trump);
+    const me = mySeat();
+    if (G.turn!==me) return;
+    const v = getValidPlays(G.hands[me], G.leadCards, G.trump);
     if (!v.options.length){ toast('无牌可出'); return; }
     const pick = v.options.slice().sort((a,b)=>optPow(a,G.trump)-optPow(b,G.trump))[0];
     G.selected = pick.map(c=>c.id);
     renderHand();
+    $('playBtn').disabled = false;
+    $('playBtn').classList.add('btn-ready');
     toast('提示：'+describe(pick));
+  }
+
+  function bindRoom(r){
+    room = r;
+    r.on('status', st => {
+      $('netDot').classList.toggle('on', !!st.online);
+      $('netStatus').textContent = st.online ? '已联网，朋友可凭房间码入座' : '连接中（同浏览器已可联机）';
+    });
+    r.on('lobby', L => {
+      lobby = L;
+      if (L.cfg) syncCfgUI(L.cfg);
+      renderWait();
+      if (L.stage==='play') hideWaitPlay();
+      else showWait();
+    });
+    r.on('state', s => {
+      if (isHost()) return;
+      applyRemote(s);
+    });
+    r.on('hello', msg => {
+      if (!isHost() || !lobby || msg.id===NightNet.pid) return;
+      const next = NightNet.takeSeat(lobby.seats, {id:msg.id, nick:msg.nick});
+      if (JSON.stringify(next) !== JSON.stringify(lobby.seats)){
+        lobby.seats = next;
+        room.publishLobby(lobby);
+      }
+    });
+    r.on('act', msg => {
+      if (msg.act==='chat' && msg.from!==NightNet.pid){
+        chatLog.push({ me:false, who: msg.nick||'友人', text: msg.text });
+        renderChat();
+        return;
+      }
+      if (!isHost()) return;
+      handleAct(msg);
+    });
+  }
+  function applyRemote(s){
+    const keepSel = G.selected;
+    Object.assign(G, s);
+    G.selected = (G.turn===mySeat()) ? keepSel : [];
+    hideWaitPlay();
+    if ((G.phase==='declare-human'||G.phase==='declare-wait') && G.pendingDeclare===mySeat()) showDeclareUI();
+    else if (G.phase==='over'){
+      const t0=G.teamPoints[0], t1=G.teamPoints[1];
+      const winner = t0>t1?0:1;
+      let html = '<h2>'+(winner===mySeat()%2?'你方胜':'对方胜')+'</h2>';
+      html += '<p>本局　蓝 <b>'+t0+'</b> : 红 <b>'+t1+'</b></p><p>等待房主开下一局</p>';
+      $('modal').innerHTML = html; $('overlay').classList.add('show');
+    } else if (G.phase!=='declare-human') {
+      $('overlay').classList.remove('show');
+    }
+    renderAll();
+    if (G.turn===mySeat() && G.phase==='play-human'){
+      $('phaseTip').textContent = G.leadCards? '跟牌：必须出 '+G.leadCards.length+' 张'+suitName(G.leadCards[0]) : '你领出';
+      startTimer();
+    } else if (G.phase==='play-human' || G.phase==='play-ai'){
+      $('phaseTip').textContent = '等待 '+seatName(G.turn);
+    }
+  }
+  function handleAct(msg){
+    if (!lobby) return;
+    if (msg.act==='sit' && lobby.stage==='wait'){
+      lobby.seats = NightNet.takeSeat(lobby.seats, {id:msg.id, nick:msg.nick}, msg.seat);
+      room.publishLobby(lobby);
+      return;
+    }
+    if (msg.act==='cfg' && lobby.stage==='wait'){
+      if (msg.id !== lobby.hostId) return;
+      return;
+    }
+    if (msg.act==='declare' && (G.phase==='declare-human'||G.phase==='declare-wait')){
+      const seat = lobby.seats.findIndex(s=>s.kind==='human' && s.id===msg.id);
+      if (seat!==G.pendingDeclare) return;
+      commitDeclare(msg.d, seat);
+      return;
+    }
+    if (msg.act==='play'){
+      const seat = lobby.seats.findIndex(s=>s.kind==='human' && s.id===msg.id);
+      if (seat!==G.turn) return;
+      const sel = (msg.ids||[]).map(id => G.hands[seat].find(c=>c.id===id)).filter(Boolean);
+      if (!isLegalPlay(G.hands[seat], sel, G.leadCards, G.trump)) return;
+      clearTimers();
+      doPlay(seat, sel);
+    }
+  }
+
+  function syncCfgUI(cfg){
+    if (cfg.decks) $('decksSel').value = String(cfg.decks);
+    if (cfg.region) $('regionSel').value = cfg.region;
+    if (cfg.aiCount!=null) $('aiCountSel').value = String(cfg.aiCount);
+    $('randSeatChk').checked = !!cfg.randomSeats;
+    const host = isHost();
+    ['decksSel','regionSel','aiCountSel','randSeatChk'].forEach(id => { $(id).disabled = !host; });
+    $('btnBegin').style.display = host ? '' : 'none';
+  }
+  function renderWait(){
+    if (!lobby) return;
+    $('roomCodeTxt').textContent = room ? room.code : '单机';
+    $('roomPill').textContent = room ? ('房 '+room.code) : '单机';
+    $('roomPill').classList.remove('hidden');
+    const wrap = $('waitSeats');
+    wrap.innerHTML = '';
+    const pos = ['s','e','n','w'];
+    for (let v=0; v<4; v++){
+      const s = canon(v);
+      const st = lobby.seats[s];
+      const div = document.createElement('div');
+      div.className = 'seat-slot '+pos[v];
+      if (st && st.kind==='human' && st.id===NightNet.pid) div.classList.add('mine');
+      if (s===pickSeat) div.classList.add('pick');
+      if (st && st.kind==='human' && st.id===lobby.hostId) div.classList.add('host-mark');
+      const av = document.createElement('div'); av.className='av';
+      if (st && st.kind==='ai' && st.avatar){
+        av.style.backgroundImage = 'url('+st.avatar+')';
+        av.style.backgroundSize='cover';
+      } else {
+        av.textContent = seatName(s).slice(0,1);
+      }
+      const sn = document.createElement('div'); sn.className='sn'; sn.textContent = seatName(s);
+      const sk = document.createElement('div'); sk.className='sk';
+      sk.textContent = !st || st.kind==='empty' ? '等人' : (st.kind==='ai' ? '电脑' : '真人');
+      div.appendChild(av); div.appendChild(sn); div.appendChild(sk);
+      div.onclick = () => onWaitSeat(s);
+      wrap.appendChild(div);
+    }
+    const filled = lobby.seats.every(s => s.kind && s.kind!=='empty');
+    $('btnBegin').disabled = !filled;
+    $('waitHint').textContent = filled
+      ? '满人。点两席换座'+( $('randSeatChk').checked ? '，或开局随机分配。' : '。')
+      : '点座位入座 / 换座。房主再点同一空位：电脑 ↔ 等人。';
+  }
+  function onWaitSeat(i){
+    if (!lobby || lobby.stage!=='wait') return;
+    if (isHost()){
+      if (pickSeat<0){ pickSeat=i; renderWait(); return; }
+      if (pickSeat===i){
+        if (lobby.seats[i].kind!=='human'){
+          if (lobby.seats[i].kind==='ai') lobby.seats[i] = { kind:'empty' };
+          else {
+            const used = lobby.seats.filter(s=>s.kind==='ai').map(s=>s.name);
+            const ai = NightNet.AI_POOL.find(a=>!used.includes(a.name)) || NightNet.AI_POOL[0];
+            lobby.seats[i] = { kind:'ai', name:ai.name, avatar:ai.avatar };
+          }
+          if (room) room.publishLobby(lobby); else renderWait();
+        }
+        pickSeat=-1; renderWait(); return;
+      }
+      lobby.seats = NightNet.swapSeats(lobby.seats, pickSeat, i);
+      pickSeat=-1;
+      if (room) room.publishLobby(lobby); else renderWait();
+      return;
+    }
+    if (room) room.send({ act:'sit', seat:i });
+  }
+  function showGate(){ $('gate').classList.add('show'); $('waitRoom').classList.add('hidden'); }
+  function showWait(){ $('gate').classList.remove('show'); $('waitRoom').classList.remove('hidden'); renderWait(); }
+  function hideWaitPlay(){ $('gate').classList.remove('show'); $('waitRoom').classList.add('hidden'); }
+
+  function hostBegin(){
+    if (!isHost() || !lobby) return;
+    applyCfgFromUI();
+    let seats = lobby.seats.map(s => Object.assign({}, s));
+    if (lobby.cfg.randomSeats){
+      const humans = seats.filter(s=>s.kind==='human');
+      const order = shuffle([0,1,2,3].slice());
+      const out = NightNet.emptySeats(4);
+      humans.forEach((h,i)=>{ out[order[i]] = h; });
+      seats = out;
+    }
+    const aiN = parseInt($('aiCountSel').value,10);
+    if (!isNaN(aiN)) seats = NightNet.setAiCount(seats, aiN);
+    if (seats.some(s=>s.kind==='empty')){
+      toast('还有空位。增加电脑或等好友入座');
+      lobby.seats = seats;
+      if (room) room.publishLobby(lobby); else renderWait();
+      return;
+    }
+    lobby.seats = seats;
+    lobby.stage = 'play';
+    if (room) room.publishLobby(lobby);
+    hideWaitPlay();
+    startGame();
+  }
+  function hostCfgChanged(){
+    if (!isHost() || !lobby || lobby.stage!=='wait') return;
+    applyCfgFromUI();
+    const n = parseInt($('aiCountSel').value,10);
+    lobby.seats = NightNet.setAiCount(lobby.seats, n);
+    if (room) room.publishLobby(lobby); else renderWait();
+  }
+
+  function createOnline(){
+    solo = false;
+    applyCfgFromUI();
+    room = NightNet.create('shengji', 4, {
+      decks: parseInt($('decksSel').value,10),
+      region: $('regionSel').value,
+      randomSeats: $('randSeatChk').checked,
+      fillAI: true,
+      aiCount: parseInt($('aiCountSel').value,10)
+    });
+    lobby = room.lobby;
+    bindRoom(room);
+    showWait();
+    toast('房间 '+room.code+' 已开');
+  }
+  function joinOnline(code){
+    code = (code||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if (code.length<4){ toast('请输入房间码'); return; }
+    solo = false;
+    room = NightNet.join('shengji', code);
+    bindRoom(room);
+    $('netStatus').textContent = '正在加入 '+code+'…';
+    showWait();
+  }
+  function startSolo(){
+    solo = true;
+    room = null;
+    applyCfgFromUI();
+    lobby = NightNet.soloLobby('shengji', 4, {
+      decks: parseInt($('decksSel').value,10),
+      region: $('regionSel').value,
+      randomSeats: $('randSeatChk').checked,
+      aiCount: 3
+    });
+    hideWaitPlay();
+    startGame();
   }
 
   $('playBtn').onclick = humanPlay;
   $('hintBtn').onclick = hint;
-  $('newBtn').onclick = ()=>{ $('overlay').classList.remove('show'); startGame(); };
-  $('startBtn').onclick = ()=>{ applyConfig(); $('overlay').classList.remove('show'); startGame(); };
-  $('regionSel').onchange = ()=>{
-    const d = REGIONS[$('regionSel').value].decks;
-    const r = document.querySelector('input[name=decks][value="'+d+'"]');
-    if (r) r.checked = true;
-  };
-  $('inviteBtn').onclick = () => NightHall.invite();
+  $('newBtn').onclick = ()=>{ $('overlay').classList.remove('show'); if (isHost()) startGame(); };
   $('chatFab').onclick = () => $('chat').classList.add('open');
   $('chatClose').onclick = () => $('chat').classList.remove('open');
+  $('btnCreate').onclick = createOnline;
+  $('btnSolo').onclick = startSolo;
+  $('btnJoin').onclick = ()=> joinOnline($('joinCode').value);
+  $('joinCode').addEventListener('keydown', e=>{ if (e.key==='Enter') joinOnline($('joinCode').value); });
+  $('copyRoom').onclick = ()=> {
+    if (room) NightHall.inviteRoom('打升级', room.code, 'shengji.html');
+    else NightHall.invite();
+  };
+  $('btnBegin').onclick = hostBegin;
+  $('btnBackGate').onclick = ()=>{
+    if (room){ room.close(); room=null; }
+    lobby=null; showGate();
+  };
+  $('decksSel').onchange = hostCfgChanged;
+  $('regionSel').onchange = ()=>{
+    const d = REGIONS[$('regionSel').value].decks;
+    $('decksSel').value = String(d);
+    hostCfgChanged();
+  };
+  $('aiCountSel').onchange = hostCfgChanged;
+  $('randSeatChk').onchange = hostCfgChanged;
 
   const qw = $('quickPhrases');
-  QUICK.forEach(q=>{ const b = document.createElement('button'); b.textContent = q; b.onclick = ()=>sendChat(q, SEAT_NAME[0]); qw.appendChild(b); });
-  $('chatSend').onclick = ()=>{ const v = $('chatInput').value; if (v.trim()){ sendChat(v, SEAT_NAME[0]); $('chatInput').value=''; } };
-  $('chatInput').addEventListener('keydown', e=>{ if (e.key === 'Enter'){ const v = e.target.value; if (v.trim()){ sendChat(v, SEAT_NAME[0]); e.target.value=''; } } });
+  QUICK.forEach(q=>{ const b = document.createElement('button'); b.textContent = q; b.onclick = ()=>sendChat(q, seatName(mySeat())); qw.appendChild(b); });
+  $('chatSend').onclick = ()=>{ const v = $('chatInput').value; if (v.trim()){ sendChat(v, seatName(mySeat())); $('chatInput').value=''; } };
+  $('chatInput').addEventListener('keydown', e=>{ if (e.key === 'Enter'){ const v = e.target.value; if (v.trim()){ sendChat(v, seatName(mySeat())); e.target.value=''; } } });
 
-  const me = NightHall.nick();
-  SEAT_NAME[0] = me;
-  $('youName').textContent = me;
-  $('youAv').textContent = me.slice(0,1);
+  const meNick = NightHall.nick();
+  $('youName').textContent = meNick;
+  $('youAv').textContent = meNick.slice(0,1);
 
-  startGame();
+  const q = new URLSearchParams(location.search);
+  const roomQ = (q.get('room')||'').toUpperCase();
+  if (roomQ) joinOnline(roomQ);
 })();
 </script>
 </body>

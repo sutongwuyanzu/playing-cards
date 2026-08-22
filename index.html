@@ -31,13 +31,13 @@
     <a class="game-tile" href="shengji.html">
       <div class="kicker">四人 · 区域玩法</div>
       <h2>打升级</h2>
-      <p>亮主、跟花、抠底。你与阿兰对家一队，东哥、老周分坐两旁。空位由电脑入座。</p>
+      <p>亮主、跟花、抠底。创建房间可选 1 副或 2 副、真人/电脑、满人换座，房间码一起打。</p>
       <span class="go">入座开桌</span>
     </a>
     <a class="game-tile" href="doudizhu.html">
       <div class="kicker">三人 · 抢地主</div>
       <h2>斗地主</h2>
-      <p>叫分、炸弹、春天。左邻东哥，右邻阿兰。记牌提示，纯积分结算。</p>
+      <p>叫分、炸弹、春天。房间码约人，空位电脑补。记牌提示，纯积分结算。</p>
       <span class="go">入座开桌</span>
     </a>
   </div>
@@ -48,6 +48,12 @@
     <div class="soon-chip">捉黑枪 · 即将上桌</div>
   </div>
 
+  <div class="join-panel">
+    <input id="joinCode" class="room-input" maxlength="6" placeholder="房间码" autocomplete="off">
+    <button class="btn btn-lacquer" id="joinBtn">加入房间</button>
+    <span style="font-size:12px;color:var(--ivory-dim)">好友把房间码发给你</span>
+  </div>
+
   <div class="lobby-actions">
     <button class="btn btn-gold" id="inviteBtn">邀请好友</button>
     <span class="pill">积分 <b id="bal">1000</b></span>
@@ -55,7 +61,10 @@
   <div class="legal">虚拟积分仅作娱乐计分 · 不可提现 · 不可兑换 · 不碰现金</div>
 </div>
 <div class="toast" id="toast"></div>
+<script src="vendor/mqtt.min.js"></script>
 <script src="js/hall.js"></script>
+<script src="js/music.js"></script>
+<script src="js/net.js"></script>
 <script>
   const nickEl = document.getElementById('nick');
   nickEl.value = NightHall.nick() === '过客' ? '' : NightHall.nick();
@@ -63,6 +72,24 @@
   nickEl.addEventListener('blur', () => NightHall.setNick(nickEl.value));
   document.getElementById('inviteBtn').onclick = () => NightHall.invite();
   document.getElementById('bal').textContent = localStorage.getItem('ddz_bal') || '1000';
+  function goJoin(code){
+    code = (code || document.getElementById('joinCode').value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if (code.length<4){ NightHall.toast('请输入房间码'); return; }
+    NightHall.toast('查找房间 '+code+'…');
+    const r = NightNet.join('peek', code);
+    let done = false;
+    const jump = (page) => {
+      if (done) return; done = true;
+      try { r.close(); } catch(e){}
+      location.href = NightHall.pageUrl(page, code);
+    };
+    setTimeout(() => jump('shengji.html'), 2800);
+    r.on('lobby', L => jump(L.game==='doudizhu' ? 'doudizhu.html' : 'shengji.html'));
+  }
+  document.getElementById('joinBtn').onclick = () => goJoin();
+  document.getElementById('joinCode').addEventListener('keydown', e=>{ if(e.key==='Enter') goJoin(); });
+  const q = new URLSearchParams(location.search);
+  if (q.get('room')) goJoin(q.get('room'));
 </script>
 </body>
 </html>

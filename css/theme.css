@@ -137,14 +137,14 @@ img{display:block;max-width:100%}
 /* ----- game chrome ----- */
 .app{
   height:100dvh;display:flex;flex-direction:column;overflow:hidden;
-  background:#070504 url("../assets/bg-table.jpg") center 42%/cover no-repeat;
+  background:#070504 url("../assets/bg-table.jpg") center 12%/130% auto no-repeat;
   position:relative;
 }
 .app::before{
   content:"";position:absolute;inset:0;pointer-events:none;
   background:
-    radial-gradient(ellipse at 50% 42%, transparent 28%, rgba(0,0,0,.5) 78%),
-    linear-gradient(180deg, rgba(8,5,2,.55) 0%, transparent 18%, transparent 62%, rgba(8,5,2,.88) 100%);
+    radial-gradient(ellipse at 50% 22%, transparent 18%, rgba(0,0,0,.55) 58%),
+    linear-gradient(180deg, rgba(8,5,2,.45) 0%, transparent 10%, rgba(8,5,2,.55) 32%, rgba(8,5,2,.96) 52%, #070504 68%);
 }
 .hud,.table-scene,.dock,.chat-drawer{position:relative;z-index:2}
 .hud{
@@ -172,7 +172,7 @@ img{display:block;max-width:100%}
 #timertxt{font-variant-numeric:tabular-nums;font-size:12px;color:var(--ivory-dim);min-width:48px}
 
 .table-scene{
-  flex:0 1 34dvh;min-height:168px;max-height:38dvh;
+  flex:0 1 24dvh;min-height:132px;max-height:26dvh;
   position:relative;overflow:visible;
 }
 .seat{
@@ -320,7 +320,7 @@ img{display:block;max-width:100%}
 }
 .hand,.handbar{
   display:flex;justify-content:center;align-items:flex-end;
-  min-height:128px;padding:12px 2px 6px;
+  min-height:156px;padding:14px 2px 8px;
 }
 .controls,#controls,#bidBar{
   display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px;
@@ -369,16 +369,16 @@ img{display:block;max-width:100%}
 .pcard.small .su{font-size:10px;top:14px;left:3px}
 .pcard.small .pip{font-size:13px;right:3px;bottom:2px}
 .pcard.small.joker{font-size:10px}
-.hand,.handbar{--overlap:36px}
+.hand,.handbar{--overlap:48px}
 .hand .pcard,.handbar .pcard{
-  width:78px;height:112px;border-radius:10px;
+  width:96px;height:138px;border-radius:12px;
   margin-left:calc(-1 * var(--overlap));cursor:pointer;
 }
 .hand .pcard:first-child,.handbar .pcard:first-child{margin-left:0}
-.hand .pcard .rk,.handbar .pcard .rk{font-size:18px;top:5px;left:7px}
-.hand .pcard .su,.handbar .pcard .su{font-size:15px;top:24px;left:7px}
-.hand .pcard .pip,.handbar .pcard .pip{font-size:24px}
-.pcard.sel{transform:translateY(-22px);z-index:5;box-shadow:0 8px 16px rgba(212,175,55,.35), inset 0 0 0 2px #f0d77a}
+.hand .pcard .rk,.handbar .pcard .rk{font-size:22px;top:6px;left:8px}
+.hand .pcard .su,.handbar .pcard .su{font-size:17px;top:28px;left:8px}
+.hand .pcard .pip,.handbar .pcard .pip{font-size:28px}
+.pcard.sel{transform:translateY(-26px);z-index:5;box-shadow:0 8px 16px rgba(212,175,55,.35), inset 0 0 0 2px #f0d77a}
 
 .setup{
   display:flex;align-items:center;gap:8px;flex-wrap:wrap;
@@ -447,9 +447,9 @@ img{display:block;max-width:100%}
   .games{grid-template-columns:1fr}
   .brand h1{font-size:34px}
   .pcard{width:40px;height:58px}
-  .hand .pcard,.handbar .pcard{width:58px;height:84px}
-  .hand,.handbar{--overlap:32px;min-height:96px}
-  .table-scene{flex-basis:30dvh;max-height:34dvh}
+  .hand .pcard,.handbar .pcard{width:70px;height:102px}
+  .hand,.handbar{--overlap:38px;min-height:118px}
+  .table-scene{flex-basis:22dvh;max-height:24dvh}
   .avatar{width:44px;height:44px}
   .seat{width:86px}
   .seat.e{top:22%;right:2px}

@@ -756,7 +756,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     const mine = mySeat();
     const cur = seatVoice(mine);
     if (id===cur){
-      if (window.NightVoice) NightVoice.speak(id, NightVoice.getType(id).preview || NightVoice.getType(id).name);
+      if (window.NightVoice) NightVoice.speak(id, NightVoice.getType(id).preview || NightVoice.getType(id).name, { kind: 'preview' });
       $('voicePop').classList.remove('open');
       return;
     }
@@ -766,7 +766,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     if (window.NightVoice){
       NightVoice.setCurrent(id);
       const t = NightVoice.getType(id);
-      NightVoice.speak(id, t.preview || ('换成'+t.name));
+      NightVoice.speak(id, t.preview || ('换成'+t.name), { kind: 'preview' });
     }
     if (lobby && lobby.seats[mine] && lobby.seats[mine].kind==='human'){
       lobby.seats[mine].voice = id;
@@ -1005,7 +1005,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     if (!window.NightVoice) return;
     const lead = G.trickPlays.length>1 ? G.trickPlays[0].cards : null;
     const killing = !!(lead && followPool(G.hands[seat], lead, G.trump).length===0 && cards.some(c=>isT(c,G.trump)));
-    NightVoice.speak(seatVoice(seat), (killing ? '杀，' : '') + NightVoice.cardsText(cards));
+    NightVoice.speakCards(seatVoice(seat), cards, killing);
   }
   function paintRole(s, v){
     const el = $('rl'+v);
@@ -1654,7 +1654,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     if (window.NightVoice){
       NightVoice.setCurrent(id);
       const t = NightVoice.getType(id);
-      NightVoice.speak(id, t.preview || ('这是'+t.name+'音，出牌会报牌'));
+      NightVoice.speak(id, t.preview || ('这是'+t.name+'音，出牌会报牌'), { kind: 'preview' });
     }
     if (!lobby) return;
     const i = mySeat();

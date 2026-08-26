@@ -103,6 +103,11 @@
     if (!p || current === "classic") return "";
     const r = c.rank || c.r;
     const s = c.suit;
+    if (current === "bikini") {
+      const pre = { "♠": "S", "♥": "H", "♣": "C", "♦": "D" };
+      if (k === "JS" || k === "JB") return "assets/skins/bikini/" + k + ".jpg";
+      if (pre[s] && r) return "assets/skins/bikini/" + pre[s] + r + ".jpg";
+    }
     const ri = Math.max(0, RANKS.indexOf(r));
     const si = Math.max(0, SUITS.indexOf(s));
     if (p.pool && p.pool.length) {
@@ -129,6 +134,9 @@
   function artStyle(c) {
     const u = faceUrl(c);
     if (!u) return "";
+    if (current === "bikini" || current === "custom") {
+      return "background-image:url('" + u.replace(/'/g, "%27") + "');background-position:center 58%";
+    }
     const r = c.rank || c.r;
     const s = c.suit;
     const ri = Math.max(0, RANKS.indexOf(r));

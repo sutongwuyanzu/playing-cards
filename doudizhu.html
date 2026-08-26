@@ -6,7 +6,7 @@
 <title>斗地主 · 夜牌馆</title>
 <meta name="theme-color" content="#140c08">
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/theme.css?v=4">
+<link rel="stylesheet" href="css/theme.css?v=5">
 </head>
 <body>
 <div class="app">
@@ -137,8 +137,8 @@
 <script src="vendor/mqtt.min.js"></script>
 <script src="js/hall.js"></script>
 <script src="js/music.js"></script>
-<script src="js/voice.js?v=4"></script>
-<script src="js/skins.js"></script>
+<script src="js/voice.js?v=5"></script>
+<script src="js/skins.js?v=5"></script>
 <script src="js/net.js"></script>
 <script>
 const SUITS = ['♠','♥','♣','♦'];
@@ -543,22 +543,21 @@ function endGame(winner){
 }
 
 function skinBits(c){
-  const art = window.NightSkin ? NightSkin.artStyle(c) : '';
-  return { cls: art ? ' skin' : '', st: art ? ' style="'+art+'"' : '' };
+  const img = window.NightSkin ? NightSkin.faceImg(c) : '';
+  return { cls: img ? ' skin' : '', img: img || '' };
 }
 function cardHTML(c, sel){
   const sk = skinBits(c);
   if(c.v>=16){
     const lab = c.v===17 ? '大<br>王' : '小<br>王';
-    return `<div class="pcard joker ${c.color} ${sel?'sel':''}${sk.cls}" data-id="${c.id}" onclick="toggleSel('${c.id}')"${sk.st}><span class="jk">${lab}</span></div>`;
+    return `<div class="pcard joker ${c.color} ${sel?'sel':''}${sk.cls}" data-id="${c.id}" onclick="toggleSel('${c.id}')">${sk.img}<span class="jk">${lab}</span></div>`;
   }
-  return `<div class="pcard ${c.color} ${sel?'sel':''}${sk.cls}" data-id="${c.id}" onclick="toggleSel('${c.id}')"${sk.st}>
-    <span class="rk">${c.r}</span><span class="su">${c.suit}</span><span class="pip">${c.suit}</span></div>`;
+  return `<div class="pcard ${c.color} ${sel?'sel':''}${sk.cls}" data-id="${c.id}" onclick="toggleSel('${c.id}')">${sk.img}<span class="rk">${c.r}</span><span class="su">${c.suit}</span><span class="pip">${c.suit}</span></div>`;
 }
 function miniCard(c){
   const sk = skinBits(c);
-  if(c.v>=16) return `<div class="pcard small joker ${c.color}${sk.cls}"${sk.st}><span class="jk">${c.v===17?'大':'小'}<br>王</span></div>`;
-  return `<div class="pcard small ${c.color}${sk.cls}"${sk.st}><span class="rk">${c.r}</span><span class="su">${c.suit}</span><span class="pip">${c.suit}</span></div>`;
+  if(c.v>=16) return `<div class="pcard small joker ${c.color}${sk.cls}">${sk.img}<span class="jk">${c.v===17?'大':'小'}<br>王</span></div>`;
+  return `<div class="pcard small ${c.color}${sk.cls}">${sk.img}<span class="rk">${c.r}</span><span class="su">${c.suit}</span><span class="pip">${c.suit}</span></div>`;
 }
 function landlordMark(){
   return `<img class="crown-badge" src="assets/crown.png" alt="地主" title="地主">`;

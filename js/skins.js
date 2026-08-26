@@ -134,16 +134,13 @@
   function artStyle(c) {
     const u = faceUrl(c);
     if (!u) return "";
-    if (current === "bikini" || current === "custom") {
-      return "background-image:url('" + u.replace(/'/g, "%27") + "');background-position:center 58%";
-    }
-    const r = c.rank || c.r;
-    const s = c.suit;
-    const ri = Math.max(0, RANKS.indexOf(r));
-    const si = Math.max(0, SUITS.indexOf(s));
-    const x = 28 + ((si * 19 + ri * 7) % 48);
-    const y = 42 + ((ri * 11 + si * 13) % 38);
-    return "background-image:url('" + u.replace(/'/g, "%27") + "');background-position:"+x+"% "+y+"%";
+    const pos = (current === "bikini" || current === "custom") ? "center 22%" : "center 30%";
+    return "background-image:url('" + u.replace(/'/g, "%27") + "');background-position:" + pos;
+  }
+  function faceImg(c) {
+    const u = faceUrl(c);
+    if (!u) return "";
+    return '<img class="face-art" alt="" src="' + u.replace(/"/g, "") + '?v=5">';
   }
   function filledCount() {
     return SLOTS.filter(k => !!custom[k]).length;
@@ -165,7 +162,7 @@
   loadCustom().then(() => apply(current));
   w.NightSkin = {
     PRESETS, SLOTS, SUITS, RANKS,
-    apply, set, current: () => current, faceUrl, backUrl, artStyle, keyOf,
+    apply, set, current: () => current, faceUrl, backUrl, artStyle, faceImg, keyOf,
     ingest, filledCount, customMap: () => custom, loadCustom
   };
 })(window);

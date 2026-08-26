@@ -6,7 +6,7 @@
 <title>打升级 · 夜牌馆</title>
 <meta name="theme-color" content="#140c08">
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/theme.css?v=4">
+<link rel="stylesheet" href="css/theme.css?v=5">
 </head>
 <body>
 <div class="app">
@@ -161,8 +161,8 @@
 <script src="vendor/mqtt.min.js"></script>
 <script src="js/hall.js"></script>
 <script src="js/music.js"></script>
-<script src="js/voice.js?v=4"></script>
-<script src="js/skins.js"></script>
+<script src="js/voice.js?v=5"></script>
+<script src="js/skins.js?v=5"></script>
 <script src="js/net.js"></script>
 <script>
 const SUITS = ['♠','♥','♣','♦'];
@@ -428,12 +428,11 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   }
   function cardHTML(c, cls){
     const extra = cls||'';
-    const art = window.NightSkin ? NightSkin.artStyle(c) : '';
-    const skin = art ? ' skin' : '';
-    const st = art ? ' style="'+art+'"' : '';
-    if (c.joker) return `<div class="pcard joker ${c.jokerType==='big'?'red':'black'} ${extra}${skin}" data-id="${c.id}"${st}><span class="jk">${c.jokerType==='big'?'大':'小'}<br>王</span></div>`;
+    const img = window.NightSkin ? NightSkin.faceImg(c) : '';
+    const skin = img ? ' skin' : '';
+    if (c.joker) return `<div class="pcard joker ${c.jokerType==='big'?'red':'black'} ${extra}${skin}" data-id="${c.id}">${img}<span class="jk">${c.jokerType==='big'?'大':'小'}<br>王</span></div>`;
     const red = (c.suit==='♥'||c.suit==='♦') ? 'red' : 'black';
-    return `<div class="pcard ${red} ${extra}${skin}" data-id="${c.id}"${st}><span class="rk">${c.rank}</span><span class="su">${c.suit}</span><span class="pip">${c.suit}</span></div>`;
+    return `<div class="pcard ${red} ${extra}${skin}" data-id="${c.id}">${img}<span class="rk">${c.rank}</span><span class="su">${c.suit}</span><span class="pip">${c.suit}</span></div>`;
   }
 
   const QUICK = ['大龙我是第一吗','听说你想跟我比比','听说你想跟我赛赛','我比你饿','啦儿啦啦儿啦 啪叽','呜儿呜儿呜儿','弟子规圣人训','首孝悌次谨信','自强不息 毁人生','你们老是捣乱 不讲了','我是王蒙牛'];

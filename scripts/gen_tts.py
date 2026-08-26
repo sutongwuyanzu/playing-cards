@@ -7,38 +7,38 @@ SUIT = {"hk": "黑桃", "ht": "红桃", "mh": "梅花", "fk": "方块"}
 RANK = {"A": "A", "2": "二", "3": "三", "4": "四", "5": "五", "6": "六", "7": "七",
         "8": "八", "9": "九", "10": "十", "J": "勾", "Q": "圈", "K": "K"}
 
-# 口语化语速/音高，避免新闻腔
+# 接近真人语速：过慢/过变调会像机器
 VOICES = {
-    "yujie":  ("zh-CN-XiaoxiaoNeural", "-12%", "-3Hz"),
-    "loli":   ("zh-CN-XiaoyiNeural", "+6%", "+4Hz"),
-    "dia":    ("zh-CN-liaoning-XiaobeiNeural", "+2%", "+3Hz"),
-    "dahai":  ("zh-CN-XiaoxiaoNeural", "-24%", "-6Hz"),
-    "jieliu": ("zh-CN-YunjianNeural", "-8%", "-3Hz"),
-    "dashu":  ("zh-CN-YunyangNeural", "-16%", "-8Hz"),
-    "youth":  ("zh-CN-YunxiNeural", "-4%", "+0Hz"),
+    "yujie":  ("zh-CN-XiaoxiaoNeural", "-4%", "+0Hz"),
+    "loli":   ("zh-CN-XiaoyiNeural", "+4%", "+2Hz"),
+    "dia":    ("zh-CN-liaoning-XiaobeiNeural", "+0%", "+1Hz"),
+    "dahai":  ("zh-CN-XiaoxiaoNeural", "-8%", "-2Hz"),
+    "jieliu": ("zh-CN-YunjianNeural", "+2%", "-1Hz"),
+    "dashu":  ("zh-CN-YunyangNeural", "-6%", "-2Hz"),
+    "youth":  ("zh-CN-YunxiNeural", "+0%", "+0Hz"),
 }
 
 JIELIU_CARD = [
-    "操，{c}砸过去，接着！",
-    "哎你丫的，{c}，接啊！",
-    "我靠{c}，谁接得住？",
-    "{c}走起，别装孙子！",
-    "给你{c}，吃不吃？",
-    "卧槽{c}，整死你！",
-    "{c}，哈，废物接着！",
-    "来来来，{c}，怂了就滚！",
-    "操了个，{c}，接不住回家吃奶！",
-    "{c}拍桌上了，接着啊你！",
-    "就这，{c}，接着呗！",
-    "哈，{c}，你能吃几张？",
+    "操！{c}！接着！",
+    "哎！你丫的，{c}！接啊！",
+    "我靠，{c}！谁接得住？",
+    "{c}！走起！别装孙子！",
+    "给你，{c}！吃不吃？",
+    "卧槽，{c}！整死你！",
+    "{c}！哈！废物接着！",
+    "来！{c}！怂了就滚！",
+    "操了个，{c}！接不住回家吃奶！",
+    "{c}！拍桌上了！接着啊你！",
+    "就这？{c}！接着呗！",
+    "哈！{c}！你能吃几张？",
 ]
 JIELIU_KILL = [
-    "杀！{c}毙了你！",
-    "操，杀！{c}砸脸上！",
+    "杀！{c}！毙了你！",
+    "操！杀！{c}砸脸上！",
     "杀爆！{c}！",
-    "你妈的杀，{c}！",
-    "杀进去，{c}，躺平吧！",
-    "主牌杀！{c}，接啊废物！",
+    "你妈的，杀！{c}！",
+    "杀进去！{c}！躺平吧！",
+    "主牌杀！{c}！接啊废物！",
 ]
 YUJIE = [
     "嗯，{c}。",
@@ -89,8 +89,12 @@ async def one(sem, voice, rate, pitch, text, path):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         for attempt in range(3):
             try:
+                tmp = path + ".tmp"
                 comm = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
-                await comm.save(path)
+                await comm.save(tmp)
+                if not os.path.exists(tmp) or os.path.getsize(tmp) < 800:
+                    raise RuntimeError("tiny audio")
+                os.replace(tmp, path)
                 print("ok", os.path.basename(os.path.dirname(path)), os.path.basename(path), text, flush=True)
                 return
             except Exception as e:

@@ -351,33 +351,39 @@ img{display:block;max-width:100%}
   overflow:hidden;
 }
 .pcard.skin{
-  background-color:#f4ead6;
-  background-size:cover;
-  background-position:center 58%;
-  background-repeat:no-repeat;
+  background-color:#1a120c;
+  background-image:none;
+}
+.pcard .face-art{
+  position:absolute;inset:0;z-index:0;
+  width:100%;height:100%;
+  object-fit:cover;object-position:center 22%;
+  pointer-events:none;display:block;
 }
 .pcard.skin::before{
-  content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;z-index:1;
-  background:
-    linear-gradient(180deg, rgba(255,253,246,.96) 0, rgba(255,253,246,.88) 18px, rgba(255,253,246,.15) 42px, transparent 52%),
-    linear-gradient(to left, rgba(255,253,246,.5), transparent 36%);
+  content:"";position:absolute;left:0;top:0;width:58px;height:58px;z-index:2;
+  pointer-events:none;border-radius:inherit;
+  background:radial-gradient(circle at 0 0, rgba(255,253,246,.92) 0, rgba(255,253,246,.45) 38%, transparent 70%);
 }
 .pcard.skin .rk,.pcard.skin .su,.pcard.skin .pip,.pcard.skin .jk{
-  z-index:3;position:relative;
+  z-index:3;position:absolute;
   text-shadow:0 0 4px #fff, 0 1px 0 #fff, 1px 1px 0 rgba(255,253,246,.95);
 }
+.pcard.skin .pip{display:none}
 .pcard .rk{position:absolute;top:4px;left:6px;font-size:15px;line-height:1}
 .pcard .su{position:absolute;top:20px;left:6px;font-size:13px;line-height:1}
 .pcard .pip{position:absolute;right:6px;bottom:4px;font-size:20px;opacity:.92}
 .pcard.red{color:#c81e1e}
 .pcard.black{color:#161616}
 .pcard.joker{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;letter-spacing:.04em;line-height:1.15;text-align:center;padding-top:8px}
+.pcard.joker.skin .jk{position:absolute;left:8px;top:8px;z-index:3;text-align:left}
 .pcard.joker.red{color:#c81e1e}
 .pcard.back{
   background:#7a1210 var(--card-back, url("../assets/card-back.jpg")) center/cover;
   border-color:#4a0c0c;box-shadow:0 2px 6px rgba(0,0,0,.4);
 }
 .pcard.small{width:32px;height:46px;border-radius:5px}
+.pcard.small.skin::before{width:22px;height:22px}
 .pcard.small .rk{font-size:11px;top:2px;left:3px}
 .pcard.small .su{font-size:10px;top:14px;left:3px}
 .pcard.small .pip{font-size:13px;right:3px;bottom:2px}

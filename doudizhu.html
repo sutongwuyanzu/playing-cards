@@ -15,6 +15,7 @@
     <div class="title">斗地主</div>
     <span class="pill">积分 <b id="balance">1000</b></span>
     <span class="spacer"></span>
+    <button class="btn btn-ghost" id="voiceInBtn" style="padding:5px 10px;font-size:12px">音 <b id="voiceLeftN">2</b></button>
     <button class="btn btn-ghost" id="inviteBtn" style="padding:6px 12px;font-size:12px">邀请</button>
   </header>
 
@@ -79,6 +80,16 @@
           </select>
         </label>
         <label><input type="checkbox" id="randSeatChk"> 开局随机座位</label>
+        <label style="grid-column:1/-1;display:block">牌面皮肤
+          <div class="skin-row" id="skinRow"></div>
+          <div class="custom-pack hidden" id="customPack">
+            <p class="hint">底图不挡花色牌号。一次 54 张（♠A–K、♥、♣、♦、小王、大王）或点格单张。本机保存。</p>
+            <button type="button" class="btn btn-ghost" id="customPick" style="padding:6px 12px;font-size:12px">选择 54 张图</button>
+            <input type="file" id="customFiles" accept="image/*" multiple hidden>
+            <div class="skin-grid" id="skinGrid"></div>
+            <div class="hint" id="customCnt">0 / 54</div>
+          </div>
+        </label>
         <label>出牌语音
           <select id="voiceSel">
             <option value="yujie">御姐</option>
@@ -106,6 +117,7 @@
   <a href="index.html" class="btn btn-ghost" style="display:inline-block;margin-left:8px">回牌馆</a>
 </div></div>
 <div class="toast" id="toast"></div>
+<div id="voicePop" class="voice-pop"></div>
 
 <div id="gate" class="overlay show">
   <div class="modal room-modal">
@@ -126,6 +138,7 @@
 <script src="js/hall.js"></script>
 <script src="js/music.js"></script>
 <script src="js/voice.js"></script>
+<script src="js/skins.js"></script>
 <script src="js/net.js"></script>
 <script>
 const SUITS = ['♠','♥','♣','♦'];
@@ -200,6 +213,7 @@ let G = null;
 let room = null;
 let lobby = null;
 let pickSeat = -1;
+let voiceLeft = 2;
 function isHost(){ return !room || room.isHost(); }
 function mySeat(){
   if (!lobby) return 0;
@@ -241,6 +255,9 @@ function newGame(){
     selected:new Set(), hints:[], hintIdx:0, bombCount:0, finished:false
   };
   G.bidTurn = G.turn;
+  G.voiceLeftBy = {};
+  voiceLeft = 2;
+  paintVoiceBtn();
   document.getElementById('overlay').style.display='none';
   document.getElementById('landlord3').innerHTML='';
   document.getElementById('centerCards').innerHTML='';
@@ -525,17 +542,23 @@ function endGame(winner){
   pub();
 }
 
+function skinBits(c){
+  const art = window.NightSkin ? NightSkin.artStyle(c) : '';
+  return { cls: art ? ' skin' : '', st: art ? ' style="'+art+'"' : '' };
+}
 function cardHTML(c, sel){
+  const sk = skinBits(c);
   if(c.v>=16){
     const lab = c.v===17 ? '大<br>王' : '小<br>王';
-    return `<div class="pcard joker ${c.color} ${sel?'sel':''}" data-id="${c.id}" onclick="toggleSel('${c.id}')">${lab}</div>`;
+    return `<div class="pcard joker ${c.color} ${sel?'sel':''}${sk.cls}" data-id="${c.id}" onclick="toggleSel('${c.id}')"${sk.st}><span class="jk">${lab}</span></div>`;
   }
-  return `<div class="pcard ${c.color} ${sel?'sel':''}" data-id="${c.id}" onclick="toggleSel('${c.id}')">
+  return `<div class="pcard ${c.color} ${sel?'sel':''}${sk.cls}" data-id="${c.id}" onclick="toggleSel('${c.id}')"${sk.st}>
     <span class="rk">${c.r}</span><span class="su">${c.suit}</span><span class="pip">${c.suit}</span></div>`;
 }
 function miniCard(c){
-  if(c.v>=16) return `<div class="pcard small joker ${c.color}">${c.v===17?'大':'小'}<br>王</div>`;
-  return `<div class="pcard small ${c.color}"><span class="rk">${c.r}</span><span class="su">${c.suit}</span><span class="pip">${c.suit}</span></div>`;
+  const sk = skinBits(c);
+  if(c.v>=16) return `<div class="pcard small joker ${c.color}${sk.cls}"${sk.st}><span class="jk">${c.v===17?'大':'小'}<br>王</span></div>`;
+  return `<div class="pcard small ${c.color}${sk.cls}"${sk.st}><span class="rk">${c.r}</span><span class="su">${c.suit}</span><span class="pip">${c.suit}</span></div>`;
 }
 function landlordMark(){
   return `<img class="crown-badge" src="assets/crown.png" alt="地主" title="地主">`;
@@ -630,9 +653,20 @@ function applyRemote(s){
 }
 function handleAct(msg){
   if (!lobby || !isHost()) return;
-  if (msg.act==='voice'){
+  if (msg.act==='voice' || msg.act==='voice-ingame'){
     const seat = lobby.seats.findIndex(s=>s.kind==='human' && s.id===msg.id);
-    if (seat>=0){ lobby.seats[seat].voice = msg.voice; if (room) room.publishLobby(lobby); }
+    if (seat>=0){
+      if (msg.act==='voice-ingame'){
+        if (G){
+          G.voiceLeftBy = G.voiceLeftBy || {};
+          const left = G.voiceLeftBy[msg.id];
+          if (left===0) return;
+          G.voiceLeftBy[msg.id] = (left==null?2:left) - 1;
+        }
+      }
+      lobby.seats[seat].voice = msg.voice;
+      if (room) room.publishLobby(lobby);
+    }
     return;
   }
   if (msg.act==='sit' && lobby.stage==='wait'){
@@ -667,7 +701,9 @@ function bindRoom(r){
     if (L.cfg){
       if (L.cfg.aiCount!=null) document.getElementById('aiCountSel').value = String(L.cfg.aiCount);
       document.getElementById('randSeatChk').checked = !!L.cfg.randomSeats;
+      if (L.cfg.skin && window.NightSkin) NightSkin.apply(L.cfg.skin);
     }
+    renderSkinRow();
     renderWait();
     if (L.stage==='play') hideWaitPlay();
     else showWait();
@@ -742,13 +778,98 @@ function onWaitSeat(i){
   if (room) room.send({act:'sit', seat:i});
 }
 function showGate(){ document.getElementById('gate').classList.add('show'); document.getElementById('waitRoom').classList.add('hidden'); }
-function showWait(){ document.getElementById('gate').classList.remove('show'); document.getElementById('waitRoom').classList.remove('hidden'); renderWait(); }
+function showWait(){ document.getElementById('gate').classList.remove('show'); document.getElementById('waitRoom').classList.remove('hidden'); renderWait(); renderSkinRow(); }
 function hideWaitPlay(){ document.getElementById('gate').classList.remove('show'); document.getElementById('waitRoom').classList.add('hidden'); }
+function paintVoiceBtn(){
+  const n = document.getElementById('voiceLeftN');
+  if (n) n.textContent = String(voiceLeft);
+  const b = document.getElementById('voiceInBtn');
+  if (b) b.disabled = voiceLeft<=0;
+}
+function ddzSeatVoice(s){
+  const st = lobby && lobby.seats[s];
+  if (st && st.voice) return st.voice;
+  if (st && st.kind==='ai') return st.name==='阿兰'?'yujie':(st.name==='东哥'?'dashu':'youth');
+  return (window.NightVoice && NightVoice.current()) || 'youth';
+}
+function tryIngameVoice(id){
+  const mine = mySeat();
+  if (id===ddzSeatVoice(mine)){
+    if (window.NightVoice) NightVoice.speak(id, NightVoice.getType(id).preview || NightVoice.getType(id).name);
+    document.getElementById('voicePop').classList.remove('open');
+    return;
+  }
+  if (voiceLeft<=0){ NightHall.toast('本局只能改 2 次音色'); return; }
+  voiceLeft--;
+  paintVoiceBtn();
+  if (window.NightVoice){
+    NightVoice.setCurrent(id);
+    const t = NightVoice.getType(id);
+    NightVoice.speak(id, t.preview || ('换成'+t.name));
+  }
+  if (lobby && lobby.seats[mine] && lobby.seats[mine].kind==='human'){
+    lobby.seats[mine].voice = id;
+    if (room && isHost()) room.publishLobby(lobby);
+    else if (room) room.send({ act:'voice-ingame', voice:id });
+  }
+  document.getElementById('voicePop').classList.remove('open');
+  NightHall.toast('音色已换，本局还剩 '+voiceLeft+' 次');
+}
+function renderSkinRow(){
+  const row = document.getElementById('skinRow');
+  if (!row || !window.NightSkin) return;
+  const host = isHost();
+  const cur = NightSkin.current();
+  row.innerHTML = '';
+  Object.keys(NightSkin.PRESETS).forEach(id => {
+    const p = NightSkin.PRESETS[id];
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'skin-chip'+(cur===id?' on':'');
+    const thumb = (p.suits && p.suits['♥']) || p.back;
+    if (id==='classic') b.innerHTML = '<div class="ph">A</div>'+p.name;
+    else if (id==='custom') b.innerHTML = '<div class="ph">+</div>'+p.name;
+    else b.innerHTML = '<img src="'+thumb+'" alt="">'+p.name;
+    b.disabled = !host;
+    b.onclick = ()=>{
+      if (!host) return;
+      NightSkin.apply(id);
+      if (lobby) lobby.cfg.skin = id;
+      document.getElementById('customPack').classList.toggle('hidden', id!=='custom');
+      if (id==='custom') renderSkinGrid();
+      renderSkinRow();
+      if (room && isHost()) room.publishLobby(lobby);
+    };
+    row.appendChild(b);
+  });
+  document.getElementById('customPack').classList.toggle('hidden', cur!=='custom');
+  if (cur==='custom') renderSkinGrid();
+}
+function renderSkinGrid(){
+  const grid = document.getElementById('skinGrid');
+  if (!grid || !window.NightSkin) return;
+  const map = NightSkin.customMap();
+  grid.innerHTML = '';
+  NightSkin.SLOTS.forEach(k => {
+    const cell = document.createElement('div');
+    cell.className = 'skin-cell'+(map[k]?'':' empty');
+    const lab = k==='JS'?'小王':(k==='JB'?'大王':k);
+    if (map[k]) cell.innerHTML = '<img src="'+map[k]+'" alt=""><span class="lb">'+lab+'</span>';
+    else cell.innerHTML = '<span class="lb">'+lab+'</span>';
+    cell.onclick = ()=>{
+      document.getElementById('customFiles').dataset.slot = k;
+      document.getElementById('customFiles').click();
+    };
+    grid.appendChild(cell);
+  });
+  document.getElementById('customCnt').textContent = NightSkin.filledCount()+' / 54';
+}
 function hostBegin(){
   if (!isHost()||!lobby) return;
   let seats = lobby.seats.map(s=>Object.assign({},s));
   lobby.cfg.randomSeats = document.getElementById('randSeatChk').checked;
   lobby.cfg.aiCount = parseInt(document.getElementById('aiCountSel').value,10);
+  lobby.cfg.skin = window.NightSkin ? NightSkin.current() : 'classic';
   if (lobby.cfg.randomSeats){
     const humans=seats.filter(s=>s.kind==='human');
     const order=[0,1,2];
@@ -765,7 +886,7 @@ function hostBegin(){
   newGame();
 }
 function createOnline(){
-  room = NightNet.create('doudizhu', 3, { aiCount:2, randomSeats:false, fillAI:true });
+  room = NightNet.create('doudizhu', 3, { aiCount:2, randomSeats:false, fillAI:true, skin: window.NightSkin ? NightSkin.current() : 'classic' });
   lobby = room.lobby;
   bindRoom(room);
   showWait();
@@ -779,7 +900,7 @@ function joinOnline(code){
 }
 function startSolo(){
   room=null;
-  lobby = NightNet.soloLobby('doudizhu', 3, { aiCount:2 });
+  lobby = NightNet.soloLobby('doudizhu', 3, { aiCount:2, skin: window.NightSkin ? NightSkin.current() : 'classic' });
   hideWaitPlay();
   newGame();
 }
@@ -829,6 +950,35 @@ document.getElementById('randSeatChk').onchange = ()=>{
     }
   };
 })();
+renderSkinRow();
+document.getElementById('customPick').onclick = ()=>{ delete document.getElementById('customFiles').dataset.slot; document.getElementById('customFiles').click(); };
+document.getElementById('customFiles').onchange = async (e)=>{
+  const files = e.target.files;
+  if (!files || !files.length || !window.NightSkin) return;
+  const slot = e.target.dataset.slot;
+  const n = await NightSkin.ingest(files, slot||null);
+  if (!n) NightHall.toast('请一次选满 54 张，或先点格子再选 1 张');
+  else NightHall.toast('已写入 '+n+' 张底图');
+  renderSkinGrid();
+  e.target.value = '';
+};
+document.getElementById('voiceInBtn').onclick = ()=>{
+  const pop = document.getElementById('voicePop');
+  if (pop.classList.contains('open')){ pop.classList.remove('open'); return; }
+  pop.innerHTML = '';
+  (NightVoice.TYPES||[]).forEach(t=>{
+    const b = document.createElement('button');
+    b.className = 'btn btn-ghost';
+    b.textContent = t.name;
+    b.onclick = ()=> tryIngameVoice(t.id);
+    pop.appendChild(b);
+  });
+  const n = document.createElement('div');
+  n.style.cssText = 'width:100%;text-align:center;font-size:11px;color:#c9b896';
+  n.textContent = '局内还可改 '+voiceLeft+' 次';
+  pop.appendChild(n);
+  pop.classList.add('open');
+};
 document.getElementById('chatFab').onclick = () => document.getElementById('chat').classList.add('open');
 document.getElementById('chatClose').onclick = () => document.getElementById('chat').classList.remove('open');
 const qw = document.getElementById('quickPhrases');

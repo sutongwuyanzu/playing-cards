@@ -10,17 +10,20 @@
     anime: {
       name: "动漫",
       back: "assets/skins/anime/back.jpg",
-      suits: { "♠": "assets/skins/anime/spade.jpg", "♥": "assets/skins/anime/heart.jpg", "♣": "assets/skins/anime/club.jpg", "♦": "assets/skins/anime/diamond.jpg" }
+      suits: { "♠": "assets/skins/anime/spade.jpg", "♥": "assets/skins/anime/heart.jpg", "♣": "assets/skins/anime/club.jpg", "♦": "assets/skins/anime/diamond.jpg" },
+      pool: ["p01","p02","p03","p04","p05","p06","p07","p08"].map(n => "assets/skins/anime/"+n+".jpg")
     },
     scenic: {
       name: "风景",
       back: "assets/skins/scenic/back.jpg",
-      suits: { "♠": "assets/skins/scenic/spade.jpg", "♥": "assets/skins/scenic/heart.jpg", "♣": "assets/skins/scenic/club.jpg", "♦": "assets/skins/scenic/diamond.jpg" }
+      suits: { "♠": "assets/skins/scenic/spade.jpg", "♥": "assets/skins/scenic/heart.jpg", "♣": "assets/skins/scenic/club.jpg", "♦": "assets/skins/scenic/diamond.jpg" },
+      pool: ["p01","p02","p03","p04","p05","p06","p07"].map(n => "assets/skins/scenic/"+n+".jpg")
     },
     bikini: {
       name: "比基尼",
       back: "assets/skins/bikini/back.jpg",
-      suits: { "♠": "assets/skins/bikini/spade.jpg", "♥": "assets/skins/bikini/heart.jpg", "♣": "assets/skins/bikini/club.jpg", "♦": "assets/skins/bikini/diamond.jpg" }
+      suits: { "♠": "assets/skins/bikini/spade.jpg", "♥": "assets/skins/bikini/heart.jpg", "♣": "assets/skins/bikini/club.jpg", "♦": "assets/skins/bikini/diamond.jpg" },
+      pool: ["p01","p02","p03","p04","p05","p06","p07","p08","p09","p10","p11"].map(n => "assets/skins/bikini/"+n+".jpg")
     },
     custom: { name: "自定义", back: "assets/card-back.jpg" }
   };
@@ -98,9 +101,17 @@
     if (current === "custom" && custom[k]) return custom[k];
     const p = PRESETS[current];
     if (!p || current === "classic") return "";
-    if (k === "JB" || k === "JS") return p.suits && p.suits["♦"] || p.back;
-    const suit = c.suit;
-    return (p.suits && p.suits[suit]) || "";
+    const r = c.rank || c.r;
+    const s = c.suit;
+    const ri = Math.max(0, RANKS.indexOf(r));
+    const si = Math.max(0, SUITS.indexOf(s));
+    if (p.pool && p.pool.length) {
+      if (k === "JB") return p.pool[p.pool.length - 1];
+      if (k === "JS") return p.pool[Math.max(0, p.pool.length - 2)];
+      return p.pool[(si * 3 + ri) % p.pool.length];
+    }
+    if (k === "JB" || k === "JS") return (p.suits && p.suits["♦"]) || p.back;
+    return (p.suits && p.suits[s]) || "";
   }
   function backUrl() {
     const p = PRESETS[current] || PRESETS.classic;
@@ -118,7 +129,13 @@
   function artStyle(c) {
     const u = faceUrl(c);
     if (!u) return "";
-    return "background-image:url('" + u.replace(/'/g, "%27") + "')";
+    const r = c.rank || c.r;
+    const s = c.suit;
+    const ri = Math.max(0, RANKS.indexOf(r));
+    const si = Math.max(0, SUITS.indexOf(s));
+    const x = 28 + ((si * 19 + ri * 7) % 48);
+    const y = 42 + ((ri * 11 + si * 13) % 38);
+    return "background-image:url('" + u.replace(/'/g, "%27") + "');background-position:"+x+"% "+y+"%";
   }
   function filledCount() {
     return SLOTS.filter(k => !!custom[k]).length;

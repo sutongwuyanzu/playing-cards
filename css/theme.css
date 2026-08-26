@@ -171,19 +171,22 @@ img{display:block;max-width:100%}
 #timerbar{height:100%;width:100%;background:linear-gradient(90deg,#e2c25a,#c0392b);transition:width .1s linear}
 #timertxt{font-variant-numeric:tabular-nums;font-size:12px;color:var(--ivory-dim);min-width:48px}
 
-.table-scene{flex:1;position:relative;min-height:0;overflow:visible}
-.seat{
-  position:absolute;width:108px;display:flex;flex-direction:column;align-items:center;gap:4px;z-index:3;
+.table-scene{
+  flex:0 1 34dvh;min-height:168px;max-height:38dvh;
+  position:relative;overflow:visible;
 }
-.seat.n{top:8px;left:50%;transform:translateX(-50%)}
-.seat.e{top:32%;right:6px}
-.seat.w{top:32%;left:6px}
+.seat{
+  position:absolute;width:96px;display:flex;flex-direction:column;align-items:center;gap:3px;z-index:3;
+}
+.seat.n{top:4px;left:50%;transform:translateX(-50%)}
+.seat.e{top:22%;right:4px}
+.seat.w{top:22%;left:4px}
 .seat.s{bottom:6px;left:50%;transform:translateX(-50%)}
 .me-row{
   display:flex;align-items:center;justify-content:center;gap:8px;margin:0 auto 6px;
 }
 .avatar{
-  width:54px;height:54px;border-radius:50%;object-fit:cover;
+  width:46px;height:46px;border-radius:50%;object-fit:cover;
   border:2px solid var(--gold);
   box-shadow:0 0 0 3px rgba(0,0,0,.45), 0 4px 12px rgba(0,0,0,.4);
   background:#2a1810;background-size:cover;background-position:center;
@@ -293,20 +296,22 @@ img{display:block;max-width:100%}
 .fan i:nth-child(3){left:30px;transform:rotate(16deg)}
 
 .felt-center{
-  position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);
-  width:min(340px,70%);text-align:center;z-index:2;
+  position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);
+  width:min(280px,58%);text-align:center;z-index:2;
 }
 .felt-center .who{font-size:12px;color:var(--ivory-dim);margin-bottom:6px;letter-spacing:.08em}
-.felt-center .cards{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;min-height:48px}
+.felt-center .cards{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;min-height:36px}
 .landlord3{display:flex;gap:3px;justify-content:center;margin-top:8px}
 
 .dock{
-  padding:4px 10px calc(12px + env(safe-area-inset-bottom));
-  background:linear-gradient(180deg, transparent, rgba(10,6,4,.92) 28%);
+  flex:1 1 auto;min-height:0;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:0 10px calc(10px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg, transparent, rgba(10,6,4,.94) 18%);
 }
 .hand,.handbar{
   display:flex;justify-content:center;align-items:flex-end;
-  min-height:86px;padding:8px 4px 4px;
+  min-height:128px;padding:12px 2px 6px;
 }
 .controls,#controls,#bidBar{
   display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px;
@@ -355,10 +360,16 @@ img{display:block;max-width:100%}
 .pcard.small .su{font-size:10px;top:14px;left:3px}
 .pcard.small .pip{font-size:13px;right:3px;bottom:2px}
 .pcard.small.joker{font-size:10px}
-.hand,.handbar{--overlap:26px}
-.hand .pcard,.handbar .pcard{margin-left:calc(-1 * var(--overlap));cursor:pointer}
+.hand,.handbar{--overlap:36px}
+.hand .pcard,.handbar .pcard{
+  width:78px;height:112px;border-radius:10px;
+  margin-left:calc(-1 * var(--overlap));cursor:pointer;
+}
 .hand .pcard:first-child,.handbar .pcard:first-child{margin-left:0}
-.pcard.sel{transform:translateY(-16px);z-index:5;box-shadow:0 8px 16px rgba(212,175,55,.35), inset 0 0 0 2px #f0d77a}
+.hand .pcard .rk,.handbar .pcard .rk{font-size:18px;top:5px;left:7px}
+.hand .pcard .su,.handbar .pcard .su{font-size:15px;top:24px;left:7px}
+.hand .pcard .pip,.handbar .pcard .pip{font-size:24px}
+.pcard.sel{transform:translateY(-22px);z-index:5;box-shadow:0 8px 16px rgba(212,175,55,.35), inset 0 0 0 2px #f0d77a}
 
 .setup{
   display:flex;align-items:center;gap:8px;flex-wrap:wrap;
@@ -426,8 +437,10 @@ img{display:block;max-width:100%}
 @media (max-width:640px){
   .games{grid-template-columns:1fr}
   .brand h1{font-size:34px}
-  .pcard{width:44px;height:64px}
-  .hand,.handbar{--overlap:28px}
+  .pcard{width:40px;height:58px}
+  .hand .pcard,.handbar .pcard{width:58px;height:84px}
+  .hand,.handbar{--overlap:32px;min-height:96px}
+  .table-scene{flex-basis:30dvh;max-height:34dvh}
   .avatar{width:44px;height:44px}
   .seat{width:86px}
   .seat.e{top:22%;right:2px}

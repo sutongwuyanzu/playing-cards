@@ -43,7 +43,10 @@
       <div class="nameplate"><span class="nm" id="nm3">左家</span><span class="role" id="rl3"></span><span class="cnt" id="cnt3"></span></div>
       <div class="played" id="pl3"></div>
     </div>
-    <div class="felt-center"><div id="trickArea" class="cards"></div></div>
+    <div class="felt-center">
+      <div id="trumpBanner" class="trump-banner">主牌未定</div>
+      <div id="trickArea" class="cards"></div>
+    </div>
     <button class="chat-fab" id="chatFab" title="牌桌闲话">言</button>
   </div>
 
@@ -92,7 +95,7 @@
         </label>
         <label>区域
           <select id="regionSel">
-            <option selected>北京</option><option>通用</option><option>江浙沪</option><option>川渝</option><option>广府</option><option>关东</option>
+            <option selected>北京</option><option>线下</option><option>通用</option><option>江浙沪</option><option>川渝</option><option>广府</option><option>关东</option>
           </select>
         </label>
         <label>电脑人数
@@ -143,7 +146,7 @@
 <div id="gate" class="overlay show">
   <div class="modal room-modal">
     <h2>打升级</h2>
-    <p>四人一桌。默认北京打法：从 2 打起，一张一张发，抽到级牌可亮主，该花色都是主。</p>
+    <p>四人一桌。北京强制跟花；线下模式自觉跟花，抓牌时可随时点级牌亮主。</p>
     <div class="gate-actions">
       <button class="btn btn-gold" id="btnCreate">创建房间</button>
       <button class="btn btn-ghost" id="btnSolo">电脑开桌</button>
@@ -375,6 +378,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
 (function(){
   const REGIONS = {
     '北京':   {decks:2, allowNoTrump:false, allowRob:false, kitty:'flat',   start:'2', dealLive:true, atkDef:true, singlesOnly:true},
+    '线下':   {decks:2, allowNoTrump:false, allowRob:false, kitty:'flat',   start:'2', dealLive:true, atkDef:true, singlesOnly:true, freePlay:true, activeDecl:true},
     '通用':   {decks:2, allowNoTrump:true,  allowRob:true,  kitty:'flat',   start:'2'},
     '江浙沪': {decks:2, allowNoTrump:true,  allowRob:true,  kitty:'double', start:'2'},
     '川渝':   {decks:1, allowNoTrump:false, allowRob:false, kitty:'flat',   start:'2'},
@@ -531,8 +535,10 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     G.phase = 'deal';
     G.dealSeat = (G.lastWinner != null) ? G.lastWinner : 0;
     G.lastWinner = G.lastWinner != null ? G.lastWinner : null;
-    log('北京打法：从 <b>'+G.level+'</b> 打起，一张一张抓。第一个亮出的 '+G.level+' 定主，该花色管别的牌。闲家为攻、亮主方为守。');
-    $('phaseTip').textContent = '一张一张抓… 第一个 '+G.level+' 可亮花色定主';
+    log((G.cfg.activeDecl?'线下自觉':'北京')+'：从 <b>'+G.level+'</b> 打起，一张一张抓。'+(G.cfg.activeDecl?'抓牌时点手里的级牌即可亮主。':'第一个亮出的 '+G.level+' 定主。')+' 闲家为攻、亮主方为守。');
+    $('phaseTip').textContent = G.cfg.activeDecl
+      ? ('抓牌中… 点手里的 '+G.level+' 主动亮主')
+      : ('一张一张抓… 第一个 '+G.level+' 可亮花色定主');
     setChatWait(true, '发牌中，可以闲话');
     pub();
     if (isHost()) dealNext();
@@ -553,8 +559,11 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     G.dealSeat = (seat + 1) % 4;
     const can = canLiveDeclare(seat, card);
     pub();
-    if (can) pauseLiveDeclare(seat, card);
-    else setTimeout(dealNext, 55);
+    if (G.cfg.activeDecl && seat===mySeat() && can && !G._curDecl){
+      toast('抓到 '+describe([card])+'，点这张牌或点亮主');
+    }
+    if (can && !(G.cfg.activeDecl && !isAiSeat(seat))) pauseLiveDeclare(seat, card);
+    else setTimeout(dealNext, G.cfg.activeDecl ? 90 : 55);
   }
   function canLiveDeclare(seat, card){
     if (G._curDecl) return false;
@@ -587,7 +596,11 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     G.phase = 'deal';
     G.dealPauseSeat = null;
     G.dealPauseCard = null;
-    $('phaseTip').textContent = G._curDecl ? ('主已定 '+ (G.trump.noTrump?'无主':G.trump.trumpSuit) +'，继续抓牌') : ('一张一张抓… 第一个 '+G.level+' 可亮花色');
+    $('phaseTip').textContent = G._curDecl
+      ? ('主已定 '+ (G.trump.noTrump?'无主':G.trump.trumpSuit) +'，继续抓牌')
+      : (G.cfg.activeDecl ? ('抓牌中… 点手里的 '+G.level+' 亮主') : ('一张一张抓… 第一个 '+G.level+' 可亮花色'));
+    paintTrumpBanner();
+    refreshActiveDeclBar();
     pub();
     setTimeout(dealNext, 40);
   }
@@ -644,13 +657,58 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
       hideLiveDeclBar();
       return;
     }
-    clearTimers();
+    const wasPaused = G.phase==='deal-declare';
     if (d){
       const dd = Object.assign({}, d, { owner: owner!=null?owner:mySeat() });
+      if (G._curDecl && !G.cfg.allowRob) { toast('主已定'); if (wasPaused) resumeLiveDeal(); return; }
       applyDeclare(dd);
       announceDecl(dd.owner, dd);
+      paintTrumpBanner();
     }
+    if (G.cfg.activeDecl && !wasPaused){
+      refreshActiveDeclBar();
+      pub();
+      return;
+    }
+    clearTimers();
     resumeLiveDeal();
+  }
+  function refreshActiveDeclBar(){
+    const bar = $('declBar');
+    if (!bar) return;
+    if (!G.cfg.activeDecl || (G.phase!=='deal' && G.phase!=='deal-declare') || G._curDecl){
+      if (G.phase==='deal' || G.phase==='deal-declare') hideLiveDeclBar();
+      return;
+    }
+    const me = mySeat();
+    const lvl = G.level;
+    const suits = [];
+    (G.hands[me]||[]).forEach(c=>{
+      if (c.rank===lvl && c.suit && suits.indexOf(c.suit)<0) suits.push(c.suit);
+    });
+    let html = '<span class="decl-lab">抓牌中 · 点级牌或花色主动亮主（打 '+lvl+'）</span>';
+    suits.forEach(s=>{ html += '<button class="btn btn-gold" data-suit="'+s+'">亮 '+s+'</button>'; });
+    if (!suits.length) html += '<span class="decl-lab">手里还没有 '+lvl+'</span>';
+    bar.innerHTML = html;
+    bar.style.display = 'flex';
+    bar.querySelectorAll('button').forEach(b=>{
+      b.onclick = ()=> liveCommit({ suit:b.dataset.suit, pair:false }, me);
+    });
+  }
+  function paintTrumpBanner(){
+    const el = $('trumpBanner');
+    if (!el) return;
+    if (G.trump && G.trump.noTrump){
+      el.className = 'trump-banner on';
+      el.textContent = '主牌：无主 · 打 '+G.level;
+    } else if (G.trump && G.trump.trumpSuit){
+      el.className = 'trump-banner on';
+      el.innerHTML = '主花 <b>'+G.trump.trumpSuit+'</b> · 打 '+G.level;
+    } else {
+      el.className = 'trump-banner';
+      el.textContent = G.cfg.activeDecl ? ('主未定 · 打 '+G.level+' · 抓到级牌可亮') : ('主牌未定 · 打 '+G.level);
+    }
+    $('trumpPill').textContent = '主牌：'+(G.trump.noTrump?'无主':(G.trump.trumpSuit||'未定'));
   }
   function finishLiveDeal(){
     hideLiveDeclBar();
@@ -669,7 +727,8 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     return Object.keys(REGIONS).find(k=>{
       const r = REGIONS[k];
       return r.start===G.cfg.start && r.allowRob===G.cfg.allowRob && r.kitty===G.cfg.kitty
-        && !!r.dealLive===!!G.cfg.dealLive && r.allowNoTrump===G.cfg.allowNoTrump;
+        && !!r.dealLive===!!G.cfg.dealLive && r.allowNoTrump===G.cfg.allowNoTrump
+        && !!r.freePlay===!!G.cfg.freePlay;
     }) || ('自定义('+G.cfg.decks+'副)');
   }
   function applyCfgFromUI(){
@@ -877,6 +936,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     $('lvlPill').textContent = G.level;
     $('trumpPill').textContent = '主牌：' + (G.trump.noTrump?'无主':G.trump.trumpSuit);
     log('主牌确定为：<b>'+(G.trump.noTrump?'无主':G.trump.trumpSuit)+'</b>，庄家='+seatName(G.declarer));
+    paintTrumpBanner();
     G.hands[G.declarer] = G.hands[G.declarer].concat(G.kitty);
     const sorted = G.hands[G.declarer].slice().sort((a,b)=>{
       const ta=isT(a,G.trump)?1:0, tb=isT(b,G.trump)?1:0;
@@ -990,10 +1050,15 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     return { html, newLevel: levels>0 ? newLevel : null, winTeam, levels, title };
   }
   function followTip(){
-    if (!G.leadCards) return G.cfg.singlesOnly ? '你领出，一次一张' : '你领出（对子需选两张同点同花）';
+    if (!G.leadCards) return G.cfg.freePlay ? ('你领出 · 自觉跟花 · 主 '+(G.trump.trumpSuit||'未定')) : (G.cfg.singlesOnly ? '你领出，一次一张' : '你领出（对子需选两张同点同花）');
     const me = mySeat();
     const pool = followPool(G.hands[me], G.leadCards, G.trump);
     const leadEff = effSuit(G.leadCards[0], G.trump);
+    const trumpHint = ' · 主 '+(G.trump.noTrump?'无主':(G.trump.trumpSuit||'未定'));
+    if (G.cfg.freePlay){
+      if (leadEff==='T') return (pool.length?'桌上是主牌，自觉跟主':'桌上是主牌，你没主了')+trumpHint;
+      return (pool.length?'桌上是 '+G.leadCards[0].suit+'，自觉跟花':'没有这门花，可杀或垫')+trumpHint;
+    }
     if (leadEff==='T') return pool.length ? '跟牌：必须出主牌' : '没有主了，只能垫';
     const s = G.leadCards[0].suit;
     if (pool.length) return '有 '+s+' 必须跟，不能直接杀';
@@ -1030,12 +1095,20 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     const me = mySeat();
     const sel = G.selected.map(id => G.hands[me].find(c=>c.id===id)).filter(Boolean);
     if (!sel.length){ toast('请先选择要出的牌'); return; }
-    const ok = isLegalPlay(G.hands[me], sel, G.leadCards, G.trump, !!G.cfg.singlesOnly);
-    if (!ok){
-      toast(G.leadCards && followPool(G.hands[me], G.leadCards, G.trump).length
-        ? '有这门花色必须跟，不能拿主牌杀'
-        : '出牌不合法');
-      return;
+    if (G.cfg.freePlay){
+      if (G.cfg.singlesOnly && sel.length!==1){ toast('一次出一张'); return; }
+      if (G.leadCards && followPool(G.hands[me], G.leadCards, G.trump).length){
+        const ids = new Set(followPool(G.hands[me], G.leadCards, G.trump).map(c=>c.id));
+        if (!sel.every(c=>ids.has(c.id))) toast('桌上是 '+suitName(G.leadCards[0])+'，线下靠自觉（已允许出）');
+      }
+    } else {
+      const ok = isLegalPlay(G.hands[me], sel, G.leadCards, G.trump, !!G.cfg.singlesOnly);
+      if (!ok){
+        toast(G.leadCards && followPool(G.hands[me], G.leadCards, G.trump).length
+          ? '有这门花色必须跟，不能拿主牌杀'
+          : '出牌不合法');
+        return;
+      }
     }
     if (!isHost()){
       if (room) room.send({ act:'play', ids: sel.map(c=>c.id) });
@@ -1170,8 +1243,9 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
       $('buryPill').style.display = 'none';
     }
     $('lvlPill').textContent = G.level;
-    $('trumpPill').textContent = '主牌：'+(G.trump.noTrump?'无主':(G.trump.trumpSuit||'未定'));
+    paintTrumpBanner();
     renderHand();
+    if (G.cfg.activeDecl && (G.phase==='deal'||G.phase==='deal-declare')) refreshActiveDeclBar();
     renderTrickArea();
     const myTurn = (G.turn===me) && (G.phase==='play-human' || G.phase==='play');
     $('playBtn').disabled = !myTurn;
@@ -1188,7 +1262,14 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
       el.innerHTML = cardHTML(c,'');
       const node = el.firstChild;
       if (G.selected.includes(c.id)) node.classList.add('sel');
+      if (G.cfg.activeDecl && (G.phase==='deal'||G.phase==='deal-declare') && !G._curDecl && c.rank===G.level && c.suit){
+        node.classList.add('can-decl');
+      }
       node.onclick = ()=>{
+        if (G.cfg.activeDecl && (G.phase==='deal'||G.phase==='deal-declare') && !G._curDecl && c.rank===G.level && c.suit){
+          liveCommit({ suit:c.suit, pair:false }, me);
+          return;
+        }
         if (G.turn !== me) return;
         if (G.phase!=='play-human' && G.phase!=='play') return;
         const i = G.selected.indexOf(c.id);
@@ -1338,9 +1419,10 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
       }
       return;
     }
-    if (msg.act==='live-decl' && G.phase==='deal-declare'){
+    if (msg.act==='live-decl' && (G.phase==='deal' || G.phase==='deal-declare')){
       const seat = lobby.seats.findIndex(s=>s.kind==='human' && s.id===msg.id);
-      if (seat!==G.dealPauseSeat) return;
+      if (seat<0) return;
+      if (G.phase==='deal-declare' && !G.cfg.activeDecl && seat!==G.dealPauseSeat) return;
       liveCommit(msg.d, seat);
       return;
     }
@@ -1348,7 +1430,8 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
       const seat = lobby.seats.findIndex(s=>s.kind==='human' && s.id===msg.id);
       if (seat!==G.turn) return;
       const sel = (msg.ids||[]).map(id => G.hands[seat].find(c=>c.id===id)).filter(Boolean);
-      if (!isLegalPlay(G.hands[seat], sel, G.leadCards, G.trump, !!G.cfg.singlesOnly)) return;
+      if (!sel.length) return;
+      if (!G.cfg.freePlay && !isLegalPlay(G.hands[seat], sel, G.leadCards, G.trump, !!G.cfg.singlesOnly)) return;
       clearTimers();
       doPlay(seat, sel);
     }

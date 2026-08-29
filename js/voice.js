@@ -1,7 +1,7 @@
-/* 夜牌馆 · 出牌语音：只播 Edge 神经录音，不回落系统机械朗读 */
+/* 夜牌馆 · 出牌语音：牌面报牌保留短音频，角色台词使用 Qwen3-TTS 合成音频 */
 (function (w) {
   const KEY = "nh_voice";
-  const VER = "5";
+  const VER = "6";
   const TYPES = [
     { id: "yujie", name: "御姐", pitch: 1, rate: 1,
       preview: "我是御姐音，出牌我会报给你听" },
@@ -18,6 +18,49 @@
     { id: "youth", name: "青年", pitch: 1, rate: 1,
       preview: "青年音，走起" }
   ];
+  const PERSONAS = {
+    dashu: {
+      role: "沉稳牌桌老手",
+      timbre: "温厚偏低的男声，近讲感强，语气松弛",
+      direction: "语速偏慢，句尾收住，像熟悉牌局的邻桌大哥",
+      lines: {
+        bid: ["我先看看牌。", "这把稳一点。", "三分，接住。"],
+        play: ["轮到我了。", "这张先走。", "慢慢来。"],
+        pass: ["这轮不跟。", "先让一手。"],
+        win: ["牌路清楚，赢得自然。", "这局收下了。"],
+        lose: ["好牌，下一局再来。", "输得明白。"]
+      }
+    },
+    yujie: {
+      role: "冷静的牌桌主理人",
+      timbre: "清晰柔和的女声，中高音区，带一点气声",
+      direction: "吐字利落，节奏从容，胜负时保持克制的笑意",
+      lines: {
+        bid: ["我看到了。", "这一手不错。", "三分，请。"],
+        play: ["该我出牌了。", "别急，慢慢看。", "这一张。"],
+        pass: ["这一轮先过。", "我再看看。"],
+        win: ["谢谢，让我赢得漂亮。", "这局我收下了。"],
+        lose: ["恭喜，打得很好。", "下一局见。"]
+      }
+    },
+    youth: {
+      role: "热心的新手牌友",
+      timbre: "自然明亮的青年男声，带轻微笑意",
+      direction: "语速中等，重音清楚，偶尔有兴奋的上扬",
+      lines: {
+        bid: ["我来试试。", "这牌能打。", "跟一分。"],
+        play: ["看我的。", "先出这张。", "到我啦。"],
+        pass: ["这轮先不出。", "留点后手。"],
+        win: ["漂亮！这把赢了。", "手感来了。"],
+        lose: ["差一点，再来。", "这局学到了。"]
+      }
+    }
+    ,
+    loli: { role: "轻快的俏皮牌友", timbre: "明亮轻盈的少女声，清晰不尖", direction: "短句、轻快、带一点撒娇", lines: { bid:["我来啦。"], play:["轮到我咯。"], pass:["这次先不要。"], win:["赢啦。"], lose:["下次一定。"] } },
+    dia: { role: "温柔的气氛玩家", timbre: "柔软甜润的女声，近距离说话感", direction: "语气柔和，尾音略带笑意", lines: { bid:["我看一下哦。"], play:["这一张，好吗？"], pass:["先不跟啦。"], win:["运气真好。"], lose:["没关系，再来。"] } },
+    dahai: { role: "低沉的海派玩家", timbre: "宽厚低沉的男声，气息自然", direction: "慢速、开阔、像在牌桌边聊天", lines: { bid:["稳住。"], play:["海里走一张。"], pass:["这轮放过。"], win:["漂亮收官。"], lose:["输赢正常。"] } },
+    jieliu: { role: "嘴硬的街头牌友", timbre: "干脆有颗粒感的男声，略带沙哑", direction: "节奏明快，带轻微调侃但不过度冒犯", lines: { bid:["来，接着。"], play:["看好了。"], pass:["先让你。"], win:["就这水平？"], lose:["算你走运。"] } }
+  };
   const SUIT_CN = { "♠": "黑桃", "♥": "红桃", "♣": "梅花", "♦": "方块" };
   const SUIT_KEY = { "♠": "hk", "♥": "ht", "♣": "mh", "♦": "fk" };
   const TRUMP_FILE = { "♠": "trump_hk.mp3", "♥": "trump_ht.mp3", "♣": "trump_mh.mp3", "♦": "trump_fk.mp3" };
@@ -49,6 +92,18 @@
     return TYPES.find(t => t.id === id) || TYPES[6];
   }
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function persona(typeId) { return PERSONAS[typeId] || PERSONAS.youth; }
+  function line(typeId, kind) {
+    const list = persona(typeId).lines[kind] || [];
+    return list.length ? pick(list) : "";
+  }
+  function speakLine(typeId, kind, text) {
+    const list = persona(typeId).lines[kind] || [];
+    const index = list.indexOf(text);
+    if (index < 0) return false;
+    playUrl(asset(typeId, "line_" + kind + "_" + (index + 1) + ".wav"), function () {});
+    return true;
+  }
   function cardText(c) {
     if (!c) return "";
     if (c.joker || (c.v && c.v >= 16)) return (c.jokerType === "big" || c.v === 17) ? "大王" : "小王";
@@ -132,7 +187,7 @@
     return current();
   }
   w.NightVoice = {
-    TYPES, getType, speak, speakCards, speakTrump, cardText, cardsText, clipKey,
+    TYPES, PERSONAS, getType, persona, line, speakLine, speak, speakCards, speakTrump, cardText, cardsText, clipKey,
     current, setCurrent, loadVoices: function () {}, unlock
   };
 })(window);

@@ -6,7 +6,7 @@
 <title>斗地主 · 夜牌馆</title>
 <meta name="theme-color" content="#140c08">
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/theme.css?v=5">
+<link rel="stylesheet" href="css/theme.css?v=6">
 </head>
 <body>
 <div class="app">
@@ -137,9 +137,9 @@
 <script src="vendor/mqtt.min.js"></script>
 <script src="js/hall.js"></script>
 <script src="js/music.js"></script>
-<script src="js/voice.js?v=5"></script>
-<script src="js/skins.js?v=5"></script>
-<script src="js/net.js"></script>
+<script src="js/voice.js?v=6"></script>
+<script src="js/skins.js?v=6"></script>
+<script src="js/net.js?v=6"></script>
 <script>
 const SUITS = ['♠','♥','♣','♦'];
 const RANKS = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
@@ -313,6 +313,12 @@ function aiBid(){
   let bid = s>=6?3 : s>=4?2 : s>=2?1 : 0;
   if(bid>G.highestBid){ G.highestBid=bid; G.bids[G.bidTurn]=bid; }
   else G.bids[G.bidTurn]=0;
+  if (window.NightVoice && NightVoice.line && isAiSeat(G.bidTurn)) {
+    const vid = ddzSeatVoice(G.bidTurn);
+    const phrase = NightVoice.line(vid, 'bid');
+    showBubble(G.bidTurn, phrase);
+    if (NightVoice.speakLine) NightVoice.speakLine(vid, 'bid', phrase);
+  }
   nextBid();
 }
 function nextBid(){
@@ -382,6 +388,14 @@ function playerHint(){
   render();
 }
 function applyPlay(p, combo){
+  if (!G || G.phase!=='play' || G.turn!==p || !combo || !Array.isArray(combo.cards) || !combo.cards.length) return false;
+  const ids = combo.cards.map(c=>c && c.id);
+  if (ids.some(id=>typeof id!=='string') || new Set(ids).size!==ids.length) return false;
+  if (!ids.every(id=>G.hands[p].some(c=>c.id===id))) return false;
+  const parsed = parseCombo(combo.cards);
+  if (!parsed) return false;
+  if (G.lastPlay && G.lastPlayer!==p && !beats(parsed,G.lastPlay)) return false;
+  combo = parsed;
   if(combo.type==='bomb'||combo.type==='rocket') G.bombCount++;
   G.hands[p]=G.hands[p].filter(c=>!combo.cards.some(x=>x.id===c.id));
   sortHand(G.hands[p]);
@@ -391,11 +405,16 @@ function applyPlay(p, combo){
     const st = lobby && lobby.seats[p];
     const vid = (st && st.voice) || (st && st.name==='阿兰'?'yujie': st && st.name==='东哥'?'dashu': (window.NightVoice.current()));
     NightVoice.speakCards(vid, combo.cards, false);
+    if (isAiSeat(p) && NightVoice.line) {
+      const phrase = NightVoice.line(vid, 'play');
+      showBubble(p, phrase);
+    }
   }
   if(G.hands[p].length===0){ endGame(p); return; }
   G.turn=(G.turn+1)%3;
   if (isAiSeat(G.turn) && isHost() && !G.finished) setTimeout(aiTurn, 800);
   pub();
+  return true;
 }
 function applyPass(p){
   G.passes++;
@@ -403,7 +422,13 @@ function applyPass(p){
   if (window.NightVoice){
     const st = lobby && lobby.seats[p];
     const vid = (st && st.voice) || NightVoice.current();
-    NightVoice.speak(vid, '不出', { kind: 'pass' });
+    if (isAiSeat(p) && NightVoice.line) {
+      const phrase = NightVoice.line(vid, 'pass');
+      showBubble(p, phrase);
+      if (!NightVoice.speakLine || !NightVoice.speakLine(vid, 'pass', phrase)) NightVoice.speak(vid, '不出', { kind: 'pass' });
+    } else {
+      NightVoice.speak(vid, '不出', { kind: 'pass' });
+    }
   }
   if(G.passes>=2){
     G.turn=G.lastPlayer; G.lastPlay=null; G.passes=0;
@@ -491,7 +516,7 @@ function aiFollow(hand, last){
     }
     return cards?parseCombo(cards):null;
   }
-  return cards;
+  return Array.isArray(cards) ? parseCombo(cards) : cards;
 }
 function aiTurn(){
   if(G.finished || !isHost()) return;
@@ -607,8 +632,8 @@ function render(){
   else if(G.phase!=='bid') document.getElementById('controls').innerHTML='';
 }
 function setMsg(t){ document.getElementById('msg').textContent=t; }
-const DDZ_QUICK = ['大龙我是第一吗','听说你想跟我比比','我比你饿','就这？','稳了','你不行啊'];
-const DDZ_AI = ['呵呵','不服来战','少废话，看牌','操作呢','下把赢你'];
+const DDZ_QUICK = ['大龙我是第一吗','听说你想跟我比比','我比你饿','这把稳一点','看我的','别急，慢慢看','就这？','稳了','你不行啊'];
+const DDZ_AI = ['呵呵','不服来战','少废话，看牌','操作呢','下把赢你','牌路清楚，赢得自然','差一点，再来'];
 function showBubble(seat, text){
   const me = mySeat();
   const elId = seat===me ? 'sayYou' : (seat===(me+1)%3 ? 'sayL' : 'sayR');
@@ -653,6 +678,7 @@ function applyRemote(s){
 function handleAct(msg){
   if (!lobby || !isHost()) return;
   if (msg.act==='voice' || msg.act==='voice-ingame'){
+    if (!window.NightVoice || !NightVoice.TYPES.some(t=>t.id===msg.voice)) return;
     const seat = lobby.seats.findIndex(s=>s.kind==='human' && s.id===msg.id);
     if (seat>=0){
       if (msg.act==='voice-ingame'){
@@ -676,9 +702,15 @@ function handleAct(msg){
   if (!G) return;
   const seat = lobby.seats.findIndex(s=>s.kind==='human' && s.id===msg.id);
   if (seat<0) return;
-  if (msg.act==='bid') applyBid(seat, msg.v);
+  if (msg.act==='bid'){
+    if (!Number.isInteger(msg.v) || msg.v<0 || msg.v>3) return;
+    applyBid(seat, msg.v);
+  }
   if (msg.act==='play' && G.turn===seat){
-    const sel=(msg.ids||[]).map(id=>G.hands[seat].find(c=>c.id===id)).filter(Boolean);
+    if (!Array.isArray(msg.ids) || !msg.ids.length || msg.ids.length>20) return;
+    if (msg.ids.some(id=>typeof id!=='string') || new Set(msg.ids).size!==msg.ids.length) return;
+    const sel=msg.ids.map(id=>G.hands[seat].find(c=>c.id===id));
+    if (sel.some(c=>!c)) return;
     const combo=parseCombo(sel);
     if(!combo) return;
     if(G.lastPlay && G.lastPlayer!==G.turn && !beats(combo,G.lastPlay)) return;
@@ -763,7 +795,7 @@ function onWaitSeat(i){
         else {
           const used=lobby.seats.filter(s=>s.kind==='ai').map(s=>s.name);
           const ai=NightNet.AI_POOL.find(a=>!used.includes(a.name))||NightNet.AI_POOL[0];
-          lobby.seats[i]={kind:'ai', name:ai.name, avatar:ai.avatar};
+          lobby.seats[i]={kind:'ai', name:ai.name, avatar:ai.avatar, voice:ai.voice, role:ai.role};
         }
         if (room) room.publishLobby(lobby); else renderWait();
       }

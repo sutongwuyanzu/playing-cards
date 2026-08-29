@@ -6,7 +6,7 @@
 <title>打升级 · 夜牌馆</title>
 <meta name="theme-color" content="#140c08">
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/theme.css?v=5">
+<link rel="stylesheet" href="css/theme.css?v=6">
 </head>
 <body>
 <div class="app">
@@ -161,9 +161,9 @@
 <script src="vendor/mqtt.min.js"></script>
 <script src="js/hall.js"></script>
 <script src="js/music.js"></script>
-<script src="js/voice.js?v=5"></script>
-<script src="js/skins.js?v=5"></script>
-<script src="js/net.js"></script>
+<script src="js/voice.js?v=6"></script>
+<script src="js/skins.js?v=6"></script>
+<script src="js/net.js?v=6"></script>
 <script>
 const SUITS = ['♠','♥','♣','♦'];
 const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
@@ -267,6 +267,7 @@ function getValidPlays(hand, leadCards, trump, singlesOnly){
   let options = [];
   if (has){
     if (size === 1) options = pool.map(c=>[c]);
+    else if (pool.length < size) options = partialFollow(pool, hand, size);
     else {
       const prs = getPairs(pool);
       options = prs.length ? prs : comb2(pool);
@@ -279,6 +280,18 @@ function getValidPlays(hand, leadCards, trump, singlesOnly){
     }
   }
   return { mode:'follow', options, mustFollow:has };
+}
+function partialFollow(pool, hand, size){
+  if (!pool.length || pool.length >= size) return [];
+  const extras = hand.filter(c=>!pool.some(p=>p.id===c.id));
+  return combN(extras, size-pool.length).map(xs=>pool.concat(xs));
+}
+function combN(arr, n){
+  if (n===0) return [[]];
+  if (n>arr.length) return [];
+  const out=[];
+  for (let i=0;i<=arr.length-n;i++) for (const tail of combN(arr.slice(i+1), n-1)) out.push([arr[i]].concat(tail));
+  return out;
 }
 function comb2(arr){
   const r = [];
@@ -300,7 +313,8 @@ function isLegalPlay(hand, selected, leadCards, trump, singlesOnly){
   const pool = followPool(hand, leadCards, trump);
   if (pool.length){
     const ids = new Set(pool.map(c=>c.id));
-    if (!selected.every(c=>ids.has(c.id))) return false;
+    const followed = selected.filter(c=>ids.has(c.id)).length;
+    if (pool.length < size ? followed!==pool.length : followed!==size) return false;
   }
   return true;
 }
@@ -420,7 +434,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   }
   function canon(view){ return (mySeat() + view) % 4; }
 
-  function log(msg){ const el=$('log'); el.innerHTML += '<div>'+msg+'</div>'; el.scrollTop = el.scrollHeight; }
+  function log(msg){ const el=$('log'); const row=document.createElement('div'); row.textContent=msg; el.appendChild(row); el.scrollTop = el.scrollHeight; }
   function toast(msg){ NightHall.toast(msg); }
   function describe(cards){
     if (!cards.length) return '过';
@@ -435,8 +449,8 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     return `<div class="pcard ${red} ${extra}${skin}" data-id="${c.id}">${img}<span class="rk">${c.rank}</span><span class="su">${c.suit}</span><span class="pip">${c.suit}</span></div>`;
   }
 
-  const QUICK = ['大龙我是第一吗','听说你想跟我比比','听说你想跟我赛赛','我比你饿','啦儿啦啦儿啦 啪叽','呜儿呜儿呜儿','弟子规圣人训','首孝悌次谨信','自强不息 毁人生','你们老是捣乱 不讲了','我是王蒙牛'];
-  const AI_REPLIES = ['就这？','呵呵','不服来战','你等着瞧','我才是老大','少废话，看牌','稳了','你不行啊','操作呢','下把赢你'];
+  const QUICK = ['大龙我是第一吗','听说你想比比','听说你想赛赛','我比你饿','这一手稳了','先看牌路','别急，慢慢来','啦儿啦啦儿啦 啪叽','呜儿呜儿呜儿','弟子规圣人训','首孝悌次谨信','自强不息 毁人生','你们老是捣乱 不讲了','我是王蒙牛'];
+  const AI_REPLIES = ['就这？','呵呵','不服来战','你等着瞧','我才是老大','少废话，看牌','稳了','你不行啊','操作呢','下把赢你','这局收下了','下一局见'];
   let chatLog = [];
   function renderChat(){
     const el = $('chatLog'); el.innerHTML = '';
@@ -521,7 +535,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     G.hands = dealt.hands;
     G.kitty = dealt.kitty;
     G.totalTricks = G.hands[0].length;
-    log('发牌完成：'+G.cfg.decks+' 副牌，每人 '+G.hands[0].length+' 张。打 <b>'+G.level+'</b> 级，区域：'+regionName()+'。');
+    log('发牌完成：'+G.cfg.decks+' 副牌，每人 '+G.hands[0].length+' 张。打 '+G.level+' 级，区域：'+regionName()+'。');
     renderAll();
     if (isHost()) runDeclare();
   }
@@ -534,7 +548,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     G.phase = 'deal';
     G.dealSeat = (G.lastWinner != null) ? G.lastWinner : 0;
     G.lastWinner = G.lastWinner != null ? G.lastWinner : null;
-    log((G.cfg.activeDecl?'线下自觉':'北京')+'：从 <b>'+G.level+'</b> 打起，一张一张抓。'+(G.cfg.activeDecl?'抓牌时点手里的级牌即可亮主。':'第一个亮出的 '+G.level+' 定主。')+' 闲家为攻、亮主方为守。');
+    log((G.cfg.activeDecl?'线下自觉':'北京')+'：从 '+G.level+' 打起，一张一张抓。'+(G.cfg.activeDecl?'抓牌时点手里的级牌即可亮主。':'第一个亮出的 '+G.level+' 定主。')+' 闲家为攻、亮主方为守。');
     $('phaseTip').textContent = G.cfg.activeDecl
       ? ('抓牌中… 点手里的 '+G.level+' 主动亮主')
       : ('一张一张抓… 第一个 '+G.level+' 可亮花色定主');
@@ -715,7 +729,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   function finishLiveDeal(){
     hideLiveDeclBar();
     G.totalTricks = G.hands[0].length;
-    log('发完：每人 '+G.hands[0].length+' 张，底 '+G.kitty.length+' 张。打 <b>'+G.level+'</b>。');
+      log('发完：每人 '+G.hands[0].length+' 张，底 '+G.kitty.length+' 张。打 '+G.level+'。');
     if (G.trump.trumpSuit===null && !G.trump.noTrump){
       const k = G.kitty[0];
       if (k && k.joker){ G.trump.noTrump = true; }
@@ -893,6 +907,12 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     }
     if (best){ applyDeclare(best); log(seatName(seat)+' 亮主：'+(best.noTrump?'无主':best.suit+(best.pair?'对':'') )); }
     else log(seatName(seat)+' 不亮');
+    if (window.NightVoice && NightVoice.line) {
+      const vid = seatVoice(seat);
+      const phrase = NightVoice.line(vid, 'bid');
+      showBubble(seat, phrase);
+      if (NightVoice.speakLine) NightVoice.speakLine(vid, 'bid', phrase);
+    }
   }
   function commitDeclare(d, owner){
     if (!isHost()){
@@ -937,7 +957,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     if (G.trump.trumpSuit===null && !G.trump.noTrump){ G.trump.trumpSuit='♠'; }
     $('lvlPill').textContent = G.level;
     $('trumpPill').textContent = '主牌：' + (G.trump.noTrump?'无主':G.trump.trumpSuit);
-    log('主牌确定为：<b>'+(G.trump.noTrump?'无主':G.trump.trumpSuit)+'</b>，庄家='+seatName(G.declarer));
+    log('主牌确定为：'+(G.trump.noTrump?'无主':G.trump.trumpSuit)+'，庄家='+seatName(G.declarer));
     paintTrumpBanner();
     G.hands[G.declarer] = G.hands[G.declarer].concat(G.kitty);
     const sorted = G.hands[G.declarer].slice().sort((a,b)=>{
@@ -1126,6 +1146,11 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     G.trickPlays.push({ seat, cards });
     log(seatName(seat)+' 出：'+describe(cards));
     speakPlay(seat, cards);
+    if (isAiSeat(seat) && window.NightVoice && NightVoice.line) {
+      const vid = seatVoice(seat);
+      const phrase = NightVoice.line(vid, 'play');
+      showBubble(seat, phrase);
+    }
     if (G.trickPlays.length===4){ resolveTrick(); }
     else {
       G.turn = (G.turn+1)%4;
@@ -1147,10 +1172,10 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     if (G.cfg.atkDef){
       if (team === attackTeam()){
         G.attackPoints += pts;
-        log('→ 攻方杀掉，得 <b>'+pts+'</b> 分（攻 '+G.attackPoints+'，45 升1 / 80 升2）');
+        log('→ 攻方杀掉，得 '+pts+' 分（攻 '+G.attackPoints+'，45 升1 / 80 升2）');
       } else {
         G.buriedPoints += pts;
-        log('→ 守方扣下，<b>'+pts+'</b> 分进堆（不给攻方）');
+        log('→ 守方扣下，'+pts+' 分进堆（不给攻方）');
       }
     } else {
       G.teamPoints[team] += pts;
@@ -1408,6 +1433,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
       return;
     }
     if (msg.act==='voice' || msg.act==='voice-ingame'){
+      if (!window.NightVoice || !NightVoice.TYPES.some(t=>t.id===msg.voice)) return;
       const seat = lobby.seats.findIndex(s=>s.kind==='human' && s.id===msg.id);
       if (seat>=0){
         if (msg.act==='voice-ingame'){
@@ -1431,8 +1457,10 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     if (msg.act==='play'){
       const seat = lobby.seats.findIndex(s=>s.kind==='human' && s.id===msg.id);
       if (seat!==G.turn) return;
-      const sel = (msg.ids||[]).map(id => G.hands[seat].find(c=>c.id===id)).filter(Boolean);
-      if (!sel.length) return;
+      if (!Array.isArray(msg.ids) || !msg.ids.length || msg.ids.length>8) return;
+      if (msg.ids.some(id=>typeof id!=='string') || new Set(msg.ids).size!==msg.ids.length) return;
+      const sel = msg.ids.map(id => G.hands[seat].find(c=>c.id===id));
+      if (sel.some(c=>!c)) return;
       if (!G.cfg.freePlay && !isLegalPlay(G.hands[seat], sel, G.leadCards, G.trump, !!G.cfg.singlesOnly)) return;
       clearTimers();
       doPlay(seat, sel);
@@ -1497,7 +1525,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
           else {
             const used = lobby.seats.filter(s=>s.kind==='ai').map(s=>s.name);
             const ai = NightNet.AI_POOL.find(a=>!used.includes(a.name)) || NightNet.AI_POOL[0];
-            lobby.seats[i] = { kind:'ai', name:ai.name, avatar:ai.avatar };
+            lobby.seats[i] = { kind:'ai', name:ai.name, avatar:ai.avatar, voice:ai.voice, role:ai.role };
           }
           if (room) room.publishLobby(lobby); else renderWait();
         }

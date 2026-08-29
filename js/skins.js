@@ -123,11 +123,15 @@
     if (current === "custom" && custom.back) return custom.back;
     return p.back || "assets/card-back.jpg";
   }
+  function assetUrl(path) {
+    if (!path) return "";
+    try { return new URL(path, document.baseURI).href; } catch (e) { return path; }
+  }
   function apply(id) {
     if (!PRESETS[id]) id = "classic";
     current = id;
     localStorage.setItem("nh_skin", id);
-    document.documentElement.style.setProperty("--card-back", "url(\"" + backUrl() + "\")");
+    document.documentElement.style.setProperty("--card-back", "url(\"" + assetUrl(backUrl()) + "\")");
     document.body.setAttribute("data-skin", id);
   }
   function set(id) { apply(id); }
@@ -140,7 +144,8 @@
   function faceImg(c) {
     const u = faceUrl(c);
     if (!u) return "";
-    return '<img class="face-art" alt="" src="' + u.replace(/"/g, "") + '?v=5">';
+    const src = u.indexOf("data:") === 0 ? u : u + (u.indexOf("?") >= 0 ? "&" : "?") + "v=6";
+    return '<img class="face-art" alt="" src="' + src.replace(/"/g, "") + '">';
   }
   function filledCount() {
     return SLOTS.filter(k => !!custom[k]).length;

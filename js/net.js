@@ -31,6 +31,41 @@
   function mid() {
     return pid() + "-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
   }
+  function safeClone(value, depth, key) {
+    depth = depth || 0;
+    if (depth > 8) return null;
+    if (value == null || typeof value === "number" || typeof value === "boolean") {
+      return typeof value === "number" && !Number.isFinite(value) ? null : value;
+    }
+    if (typeof value === "string") {
+      const pattern = (key === "nick" || key === "text") ? /[<>]/ : /[<>"'`]/;
+      return value.length <= 256 && !pattern.test(value) ? value : null;
+    }
+    if (Array.isArray(value)) {
+      if (value.length > 256) return null;
+      const out = [];
+      for (const item of value) {
+        const clean = safeClone(item, depth + 1, null);
+        if (clean === null && item !== null) return null;
+        out.push(clean);
+      }
+      return out;
+    }
+    if (typeof value === "object") {
+      const keys = Object.keys(value);
+      if (keys.length > 128) return null;
+      const out = Object.create(null);
+      for (const key of keys) {
+        if (!/^[A-Za-z0-9_$-]{1,64}$/.test(key)) return null;
+        if (key === "__proto__" || key === "prototype" || key === "constructor") return null;
+        const clean = safeClone(value[key], depth + 1, key);
+        if (clean === null && value[key] !== null) return null;
+        out[key] = clean;
+      }
+      return out;
+    }
+    return null;
+  }
 
   function Emitter() {
     this._h = {};
@@ -130,17 +165,21 @@
   };
 
   Room.prototype._onMsg = function (msg, via) {
+    if (via !== "local") {
+      msg = safeClone(msg);
+      if (!msg) return;
+    }
     if (!msg || !msg.mid) return;
     if (this.seen.includes(msg.mid)) return;
     this.seen.push(msg.mid);
     if (this.seen.length > 400) this.seen.splice(0, 200);
-    if (msg.t === "lobby" && msg.lobby) {
+    if (msg.t === "lobby" && msg.lobby && msg.from === msg.lobby.hostId && (!this.hostId || this.hostId === msg.from)) {
       this.lobby = msg.lobby;
       if (msg.lobby.hostId) this.hostId = msg.lobby.hostId;
       this.emit("lobby", this.lobby);
       return;
     }
-    if (msg.t === "state" && msg.state) {
+    if (msg.t === "state" && msg.state && this.hostId && msg.from === this.hostId) {
       this.state = msg.state;
       this.emit("state", this.state);
       return;
@@ -159,7 +198,7 @@
       return;
     }
     if (msg.from === this.pid && via) return;
-    this.emit("act", msg);
+    if (msg.t === "act" && msg.id && msg.from === msg.id) this.emit("act", msg);
   };
 
   Room.prototype._send = function (topicKey, obj, retain) {
@@ -228,9 +267,9 @@
     return a;
   }
   const AI_POOL = [
-    { name: "东哥", avatar: "assets/avatars/dongge.jpg" },
-    { name: "阿兰", avatar: "assets/avatars/alan.jpg" },
-    { name: "老周", avatar: "assets/avatars/laozhou.jpg" }
+    { name: "东哥", avatar: "assets/avatars/dongge.jpg", voice: "dashu", role: "沉稳牌桌老手" },
+    { name: "阿兰", avatar: "assets/avatars/alan.jpg", voice: "yujie", role: "冷静的牌桌主理人" },
+    { name: "老周", avatar: "assets/avatars/laozhou.jpg", voice: "youth", role: "热心的新手牌友" }
   ];
   function fillAI(seats) {
     let k = 0;
@@ -238,7 +277,7 @@
       if (s.kind !== "empty") return s;
       const ai = AI_POOL[k % AI_POOL.length];
       k++;
-      return { kind: "ai", name: ai.name, avatar: ai.avatar };
+      return { kind: "ai", name: ai.name, avatar: ai.avatar, voice: ai.voice, role: ai.role };
     });
   }
   function takeSeat(seats, human, prefer) {
@@ -284,7 +323,7 @@
       if (out[i].kind === "empty") {
         const ai = AI_POOL[k % AI_POOL.length];
         k++;
-        out[i] = { kind: "ai", name: ai.name, avatar: ai.avatar };
+        out[i] = { kind: "ai", name: ai.name, avatar: ai.avatar, voice: ai.voice, role: ai.role };
         need--;
       }
     }

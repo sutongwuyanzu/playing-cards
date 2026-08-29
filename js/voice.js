@@ -1,7 +1,8 @@
 /* 夜牌馆 · 出牌语音：牌面报牌保留短音频，角色台词使用 Qwen3-TTS 合成音频 */
 (function (w) {
   const KEY = "nh_voice";
-  const VER = "6";
+  const VER = "7";
+  const VOICE_POLICY = { maxQueue: 3, maxClipMs: 5000 };
   const TYPES = [
     { id: "yujie", name: "御姐", pitch: 1, rate: 1,
       preview: "我是御姐音，出牌我会报给你听" },
@@ -68,6 +69,7 @@
   const JIELIU_TAUNT = ["taunt1.mp3", "taunt2.mp3", "taunt3.mp3", "taunt4.mp3", "taunt5.mp3", "taunt6.mp3", "taunt7.mp3", "taunt8.mp3"];
   let audio = null;
   let unlocked = false;
+  let playing = false;
   let q = [];
 
   function asset(typeId, file) {
@@ -124,26 +126,55 @@
   }
   function playUrl(url, done) {
     unlock();
-    try { if (audio) { audio.pause(); audio = null; } } catch (e) {}
+    q.push({ url: url, done: done });
+    if (q.length > VOICE_POLICY.maxQueue) q.splice(0, q.length - VOICE_POLICY.maxQueue);
+    drainQueue();
+  }
+  function drainQueue() {
+    if (playing || !q.length) return;
+    playing = true;
+    const item = q.shift();
     const a = new Audio();
     audio = a;
     let settled = false;
+    let timer = null;
+    let retry = null;
+    function cleanup() {
+      if (timer) clearTimeout(timer);
+      if (retry) {
+        w.document.removeEventListener("pointerdown", retry, true);
+        w.document.removeEventListener("keydown", retry, true);
+      }
+      a.onended = null;
+      a.onerror = null;
+    }
     function finish(ok) {
       if (settled) return;
       settled = true;
-      if (done) done(ok);
+      cleanup();
+      try { a.pause(); } catch (e) {}
+      if (audio === a) audio = null;
+      playing = false;
+      if (item.done) item.done(ok);
+      if (q.length) setTimeout(drainQueue, 0);
     }
     a.onended = function () { finish(true); };
     a.onerror = function () { finish(false); };
-    a.src = url;
+    a.src = item.url;
+    timer = setTimeout(function () { finish(true); }, VOICE_POLICY.maxClipMs);
     const p = a.play();
     if (p && p.catch) {
       p.catch(function () {
-        const once = function () {
-          w.document.removeEventListener("pointerdown", once, true);
-          a.play().then(function () {}).catch(function () { finish(false); });
+        retry = function () {
+          if (settled) return;
+          w.document.removeEventListener("pointerdown", retry, true);
+          w.document.removeEventListener("keydown", retry, true);
+          retry = null;
+          const again = a.play();
+          if (again && again.catch) again.catch(function () { finish(false); });
         };
-        w.document.addEventListener("pointerdown", once, true);
+        w.document.addEventListener("pointerdown", retry, true);
+        w.document.addEventListener("keydown", retry, true);
       });
     }
   }
@@ -187,7 +218,7 @@
     return current();
   }
   w.NightVoice = {
-    TYPES, PERSONAS, getType, persona, line, speakLine, speak, speakCards, speakTrump, cardText, cardsText, clipKey,
+    TYPES, PERSONAS, VOICE_POLICY, getType, persona, line, speakLine, speak, speakCards, speakTrump, cardText, cardsText, clipKey,
     current, setCurrent, loadVoices: function () {}, unlock
   };
 })(window);

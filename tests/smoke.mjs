@@ -29,10 +29,15 @@ try {
     const { page } = await open('doudizhu.html');
     const result = await page.evaluate(async () => {
       const response = await fetch('assets/tts/dashu/line_bid_1.wav');
-      return { status: response.status, hasLinePlayer: typeof NightVoice.speakLine === 'function' };
+      return {
+        status: response.status,
+        hasLinePlayer: typeof NightVoice.speakLine === 'function',
+        policy: NightVoice.VOICE_POLICY
+      };
     });
     assert.equal(result.status, 200, 'Qwen3-TTS 台词音频应可访问');
     assert.equal(result.hasLinePlayer, true, '语音模块应暴露台词播放器');
+    assert.deepEqual(result.policy, { maxQueue: 3, maxClipMs: 5000 }, '语音应使用不打断队列策略');
     await page.close();
   }
 

@@ -42,6 +42,19 @@ try {
   }
 
   {
+    const { page } = await open('doudizhu.html');
+    const result = await page.evaluate(() => ({
+      anime: NightSkin.PRESETS.anime.pool,
+      scenic: NightSkin.PRESETS.scenic.pool
+    }));
+    assert.equal(new Set(result.anime).size, result.anime.length, '动漫皮肤牌面池不应重复');
+    assert.equal(new Set(result.scenic).size, result.scenic.length, '风景皮肤牌面池不应重复');
+    assert.equal(result.anime.every(path => !/p0[1-4]\.jpg$/.test(path)), true, '动漫皮肤不应复用花色示例图');
+    assert.equal(result.scenic.every(path => !/p0[1-4]\.jpg$/.test(path)), true, '风景皮肤不应复用花色示例图');
+    await page.close();
+  }
+
+  {
     const { page } = await open('doudizhu.html', { width: 1440, height: 900 });
     const result = await page.evaluate(() => {
       const hand = [

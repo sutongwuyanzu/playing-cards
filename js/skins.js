@@ -11,13 +11,13 @@
       name: "动漫",
       back: "assets/skins/anime/back.jpg",
       suits: { "♠": "assets/skins/anime/spade.jpg", "♥": "assets/skins/anime/heart.jpg", "♣": "assets/skins/anime/club.jpg", "♦": "assets/skins/anime/diamond.jpg" },
-      pool: ["p01","p02","p03","p04","p05","p06","p07","p08"].map(n => "assets/skins/anime/"+n+".jpg")
+      pool: ["p05","p06","p07","p08"].map(n => "assets/skins/anime/"+n+".jpg")
     },
     scenic: {
       name: "风景",
       back: "assets/skins/scenic/back.jpg",
       suits: { "♠": "assets/skins/scenic/spade.jpg", "♥": "assets/skins/scenic/heart.jpg", "♣": "assets/skins/scenic/club.jpg", "♦": "assets/skins/scenic/diamond.jpg" },
-      pool: ["p01","p02","p03","p04","p05","p06","p07"].map(n => "assets/skins/scenic/"+n+".jpg")
+      pool: ["p05","p06","p07"].map(n => "assets/skins/scenic/"+n+".jpg")
     },
     bikini: {
       name: "比基尼",
@@ -144,7 +144,7 @@
   function faceImg(c) {
     const u = faceUrl(c);
     if (!u) return "";
-    const src = u.indexOf("data:") === 0 ? u : u + (u.indexOf("?") >= 0 ? "&" : "?") + "v=6";
+    const src = u.indexOf("data:") === 0 ? u : u + (u.indexOf("?") >= 0 ? "&" : "?") + "v=7";
     return '<img class="face-art" alt="" src="' + src.replace(/"/g, "") + '">';
   }
   function filledCount() {

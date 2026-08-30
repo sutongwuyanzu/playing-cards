@@ -43,6 +43,36 @@ try {
 
   {
     const { page } = await open('doudizhu.html');
+    const result = await page.evaluate(async () => {
+      sessionStorage.removeItem('nh_room_profile_SMOKEPROFILE');
+      const pending = NightHall.roomProfile('SMOKEPROFILE');
+      document.querySelector('#profileNick').value = '测试友';
+      document.querySelector('#profileConfirm').click();
+      return { profile: await pending, hasRtc: typeof NightRoomVoice.attach === 'function' };
+    });
+    assert.deepEqual(result.profile.nick, '测试友', '入房前应确认昵称');
+    assert.equal(typeof result.profile.voice, 'string', '入房前应选择音色');
+    assert.equal(result.hasRtc, true, '房间页面应加载实时语音模块');
+    await page.close();
+  }
+
+  {
+    const { page } = await open('doudizhu.html');
+    const result = await page.evaluate(() => {
+      const overlay = document.createElement('div');
+      overlay.className = 'overlay show';
+      overlay.innerHTML = '<div class="modal profile-modal" role="dialog"><div class="say show">快点吧</div></div>';
+      document.body.appendChild(overlay);
+      const bubble = overlay.querySelector('.say').getBoundingClientRect();
+      return { role: overlay.querySelector('[role="dialog"]').getAttribute('role'), width: bubble.width, height: bubble.height };
+    });
+    assert.equal(result.role, 'dialog', '入房弹窗应声明对话框语义');
+    assert.equal(result.width > result.height, true, '语音气泡应优先横向展示');
+    await page.close();
+  }
+
+  {
+    const { page } = await open('doudizhu.html');
     const result = await page.evaluate(() => ({
       anime: NightSkin.PRESETS.anime.pool,
       scenic: NightSkin.PRESETS.scenic.pool

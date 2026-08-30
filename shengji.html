@@ -6,7 +6,7 @@
 <title>打升级 · 夜牌馆</title>
 <meta name="theme-color" content="#140c08">
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/theme.css?v=6">
+<link rel="stylesheet" href="css/theme.css?v=7">
 </head>
 <body>
 <div class="app">
@@ -20,6 +20,7 @@
     <span class="pill" id="cfgPill">通用 · 2副</span>
     <span class="pill hidden" id="roomPill"></span>
     <span class="spacer"></span>
+    <button class="btn btn-ghost room-voice-btn" id="roomVoiceBtn" disabled style="padding:5px 10px;font-size:12px">🎙 开启语音</button>
     <button class="btn btn-ghost" id="voiceInBtn" style="padding:5px 10px;font-size:12px">音 <b id="voiceLeftN">2</b></button>
     <div id="timerWrap">
       <div id="timerbarOuter"><div id="timerbar"></div></div>
@@ -162,8 +163,9 @@
 <script src="js/hall.js"></script>
 <script src="js/music.js"></script>
 <script src="js/voice.js?v=7"></script>
+<script src="js/room-voice.js?v=1"></script>
 <script src="js/skins.js?v=7"></script>
-<script src="js/net.js?v=6"></script>
+<script src="js/net.js?v=7"></script>
 <script>
 const SUITS = ['♠','♥','♣','♦'];
 const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
@@ -412,6 +414,12 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   const teamOf = s => s % 2;
   let room = null;
   let lobby = null;
+  let roomVoice = null;
+  let joining = false;
+  function leaveRoom(){
+    if (roomVoice){ roomVoice.destroy(); roomVoice=null; }
+    if (room){ room.close(); room=null; }
+  }
   let pickSeat = -1;
   let solo = false;
   let voiceLeft = 2;
@@ -1351,6 +1359,8 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
 
   function bindRoom(r){
     room = r;
+    if (roomVoice) roomVoice.destroy();
+    roomVoice = window.NightRoomVoice ? NightRoomVoice.attach(r, { button: $('roomVoiceBtn') }) : null;
     r.on('status', st => {
       $('netDot').classList.toggle('on', !!st.online);
       $('netStatus').textContent = st.online ? '已联网，朋友可凭房间码入座' : '连接中（同浏览器已可联机）';
@@ -1368,7 +1378,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     });
     r.on('hello', msg => {
       if (!isHost() || !lobby || msg.id===NightNet.pid) return;
-      const next = NightNet.takeSeat(lobby.seats, {id:msg.id, nick:msg.nick});
+      const next = NightNet.takeSeat(lobby.seats, {id:msg.id, nick:msg.nick, voice:msg.voice});
       if (JSON.stringify(next) !== JSON.stringify(lobby.seats)){
         lobby.seats = next;
         room.publishLobby(lobby);
@@ -1418,7 +1428,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   function handleAct(msg){
     if (!lobby) return;
     if (msg.act==='sit' && lobby.stage==='wait'){
-      lobby.seats = NightNet.takeSeat(lobby.seats, {id:msg.id, nick:msg.nick}, msg.seat);
+      lobby.seats = NightNet.takeSeat(lobby.seats, {id:msg.id, nick:msg.nick, voice:msg.voice}, msg.seat);
       room.publishLobby(lobby);
       return;
     }
@@ -1584,6 +1594,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   }
 
   function createOnline(){
+    leaveRoom();
     solo = false;
     applyCfgFromUI();
     room = NightNet.create('shengji', 4, {
@@ -1599,18 +1610,26 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
     showWait();
     toast('房间 '+room.code+' 已开');
   }
-  function joinOnline(code){
+  async function joinOnline(code){
+    if (joining) return;
     code = (code||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
     if (code.length<4){ toast('请输入房间码'); return; }
-    solo = false;
-    room = NightNet.join('shengji', code);
-    bindRoom(room);
-    $('netStatus').textContent = '正在加入 '+code+'…';
-    showWait();
+    joining = true;
+    try {
+      if (!await NightHall.roomProfile(code)) return;
+      leaveRoom();
+      solo = false;
+      const nextRoom = NightNet.join('shengji', code);
+      bindRoom(nextRoom);
+      $('netStatus').textContent = '正在加入 '+code+'…';
+      showWait();
+    } finally { joining = false; }
   }
   function startSolo(){
+    leaveRoom();
+    const voiceBtn = $('roomVoiceBtn');
+    if (voiceBtn){ voiceBtn.disabled=true; voiceBtn.textContent='联机语音'; voiceBtn.removeAttribute('aria-pressed'); }
     solo = true;
-    room = null;
     applyCfgFromUI();
     lobby = NightNet.soloLobby('shengji', 4, {
       decks: parseInt($('decksSel').value,10),
@@ -1638,7 +1657,7 @@ function optPow(o, trump){ return Math.max(...o.map(c=>power(c,trump))); }
   };
   $('btnBegin').onclick = hostBegin;
   $('btnBackGate').onclick = ()=>{
-    if (room){ room.close(); room=null; }
+    leaveRoom();
     lobby=null; showGate();
   };
   $('decksSel').onchange = hostCfgChanged;

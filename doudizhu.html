@@ -6,7 +6,7 @@
 <title>斗地主 · 夜牌馆</title>
 <meta name="theme-color" content="#140c08">
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/theme.css?v=6">
+<link rel="stylesheet" href="css/theme.css?v=7">
 </head>
 <body>
 <div class="app">
@@ -15,6 +15,7 @@
     <div class="title">斗地主</div>
     <span class="pill">积分 <b id="balance">1000</b></span>
     <span class="spacer"></span>
+    <button class="btn btn-ghost room-voice-btn" id="roomVoiceBtn" disabled style="padding:5px 10px;font-size:12px">🎙 开启语音</button>
     <button class="btn btn-ghost" id="voiceInBtn" style="padding:5px 10px;font-size:12px">音 <b id="voiceLeftN">2</b></button>
     <button class="btn btn-ghost" id="inviteBtn" style="padding:6px 12px;font-size:12px">邀请</button>
   </header>
@@ -138,8 +139,9 @@
 <script src="js/hall.js"></script>
 <script src="js/music.js"></script>
 <script src="js/voice.js?v=7"></script>
+<script src="js/room-voice.js?v=1"></script>
 <script src="js/skins.js?v=7"></script>
-<script src="js/net.js?v=6"></script>
+<script src="js/net.js?v=7"></script>
 <script>
 const SUITS = ['♠','♥','♣','♦'];
 const RANKS = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
@@ -212,6 +214,12 @@ function beats(a,b){
 let G = null;
 let room = null;
 let lobby = null;
+let roomVoice = null;
+let joining = false;
+function leaveRoom(){
+  if (roomVoice){ roomVoice.destroy(); roomVoice=null; }
+  if (room){ room.close(); room=null; }
+}
 let pickSeat = -1;
 let voiceLeft = 2;
 function isHost(){ return !room || room.isHost(); }
@@ -695,7 +703,7 @@ function handleAct(msg){
     return;
   }
   if (msg.act==='sit' && lobby.stage==='wait'){
-    lobby.seats = NightNet.takeSeat(lobby.seats, {id:msg.id, nick:msg.nick}, msg.seat);
+    lobby.seats = NightNet.takeSeat(lobby.seats, {id:msg.id, nick:msg.nick, voice:msg.voice}, msg.seat);
     room.publishLobby(lobby);
     return;
   }
@@ -720,6 +728,8 @@ function handleAct(msg){
 }
 function bindRoom(r){
   room = r;
+  if (roomVoice) roomVoice.destroy();
+  roomVoice = window.NightRoomVoice ? NightRoomVoice.attach(r, { button: document.getElementById('roomVoiceBtn') }) : null;
   r.on('status', st => {
     document.getElementById('netDot').classList.toggle('on', !!st.online);
     document.getElementById('netStatus').textContent = st.online ? '已联网，朋友可凭房间码入座' : '连接中（同浏览器已可联机）';
@@ -742,7 +752,7 @@ function bindRoom(r){
   r.on('state', s => { if (!isHost()) applyRemote(s); });
   r.on('hello', msg => {
     if (!isHost() || !lobby || msg.id===NightNet.pid) return;
-    const next = NightNet.takeSeat(lobby.seats, {id:msg.id, nick:msg.nick});
+    const next = NightNet.takeSeat(lobby.seats, {id:msg.id, nick:msg.nick, voice:msg.voice});
     if (JSON.stringify(next)!==JSON.stringify(lobby.seats)){
       lobby.seats = next;
       room.publishLobby(lobby);
@@ -917,20 +927,29 @@ function hostBegin(){
   newGame();
 }
 function createOnline(){
+  leaveRoom();
   room = NightNet.create('doudizhu', 3, { aiCount:2, randomSeats:false, fillAI:true, skin: window.NightSkin ? NightSkin.current() : 'classic' });
   lobby = room.lobby;
   bindRoom(room);
   showWait();
 }
-function joinOnline(code){
+async function joinOnline(code){
+  if (joining) return;
   code=(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
   if (code.length<4){ NightHall.toast('请输入房间码'); return; }
-  room = NightNet.join('doudizhu', code);
-  bindRoom(room);
-  showWait();
+  joining = true;
+  try {
+    if (!await NightHall.roomProfile(code)) return;
+    leaveRoom();
+    const nextRoom = NightNet.join('doudizhu', code);
+    bindRoom(nextRoom);
+    showWait();
+  } finally { joining = false; }
 }
 function startSolo(){
-  room=null;
+  leaveRoom();
+  const voiceBtn = document.getElementById('roomVoiceBtn');
+  if (voiceBtn){ voiceBtn.disabled=true; voiceBtn.textContent='联机语音'; voiceBtn.removeAttribute('aria-pressed'); }
   lobby = NightNet.soloLobby('doudizhu', 3, { aiCount:2, skin: window.NightSkin ? NightSkin.current() : 'classic' });
   hideWaitPlay();
   newGame();
@@ -954,7 +973,7 @@ document.getElementById('btnSolo').onclick = startSolo;
 document.getElementById('btnJoin').onclick = () => joinOnline(document.getElementById('joinCode').value);
 document.getElementById('joinCode').addEventListener('keydown', e=>{ if(e.key==='Enter') joinOnline(e.target.value); });
 document.getElementById('btnBegin').onclick = hostBegin;
-document.getElementById('btnBackGate').onclick = ()=>{ if(room){room.close();room=null;} lobby=null; showGate(); };
+document.getElementById('btnBackGate').onclick = ()=>{ leaveRoom(); lobby=null; showGate(); };
 document.getElementById('aiCountSel').onchange = ()=>{
   if (!isHost()||!lobby||lobby.stage!=='wait') return;
   lobby.cfg.aiCount=parseInt(document.getElementById('aiCountSel').value,10);

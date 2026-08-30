@@ -12,7 +12,7 @@
 <link rel="icon" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/emblem.png">
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/theme.css?v=5">
+<link rel="stylesheet" href="css/theme.css?v=7">
 </head>
 <body>
 <div class="lobby">
@@ -64,7 +64,8 @@
 <script src="vendor/mqtt.min.js"></script>
 <script src="js/hall.js"></script>
 <script src="js/music.js"></script>
-<script src="js/net.js?v=6"></script>
+<script src="js/voice.js?v=7"></script>
+<script src="js/net.js?v=7"></script>
 <script>
   const nickEl = document.getElementById('nick');
   nickEl.value = NightHall.nick() === '过客' ? '' : NightHall.nick();
@@ -72,19 +73,28 @@
   nickEl.addEventListener('blur', () => NightHall.setNick(nickEl.value));
   document.getElementById('inviteBtn').onclick = () => NightHall.invite();
   document.getElementById('bal').textContent = localStorage.getItem('ddz_bal') || '1000';
-  function goJoin(code){
+  let joining = false;
+  async function goJoin(code){
+    if (joining) return;
     code = (code || document.getElementById('joinCode').value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
     if (code.length<4){ NightHall.toast('请输入房间码'); return; }
-    NightHall.toast('查找房间 '+code+'…');
-    const r = NightNet.join('peek', code);
-    let done = false;
-    const jump = (page) => {
-      if (done) return; done = true;
-      try { r.close(); } catch(e){}
-      location.href = NightHall.pageUrl(page, code);
-    };
-    setTimeout(() => jump('shengji.html'), 2800);
-    r.on('lobby', L => jump(L.game==='doudizhu' ? 'doudizhu.html' : 'shengji.html'));
+    joining = true;
+    let lookupStarted = false;
+    try {
+      if (!await NightHall.roomProfile(code)) return;
+      NightHall.toast('查找房间 '+code+'…');
+      const r = NightNet.join('peek', code);
+      lookupStarted = true;
+      let done = false;
+      const jump = (page) => {
+        if (done) return; done = true;
+        joining = false;
+        try { r.close(); } catch(e){}
+        location.href = NightHall.pageUrl(page, code);
+      };
+      setTimeout(() => jump('shengji.html'), 2800);
+      r.on('lobby', L => jump(L.game==='doudizhu' ? 'doudizhu.html' : 'shengji.html'));
+    } finally { if (!lookupStarted) joining = false; }
   }
   document.getElementById('joinBtn').onclick = () => goJoin();
   document.getElementById('joinCode').addEventListener('keydown', e=>{ if(e.key==='Enter') goJoin(); });

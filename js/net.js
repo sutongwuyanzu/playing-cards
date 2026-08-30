@@ -23,6 +23,13 @@
   function nick() {
     return (w.NightHall && NightHall.nick()) || "过客";
   }
+  function voice() {
+    return (w.NightVoice && NightVoice.current && NightVoice.current()) || "youth";
+  }
+  function validVoice(value) {
+    const ids = w.NightVoice && NightVoice.TYPES ? NightVoice.TYPES.map(v => v.id) : ["yujie", "loli", "dia", "dahai", "jieliu", "dashu", "youth"];
+    return ids.includes(value) ? value : voice();
+  }
   function makeCode() {
     let s = "";
     for (let i = 0; i < 6; i++) s += ALPHA[Math.floor(Math.random() * ALPHA.length)];
@@ -38,8 +45,10 @@
       return typeof value === "number" && !Number.isFinite(value) ? null : value;
     }
     if (typeof value === "string") {
-      const pattern = (key === "nick" || key === "text") ? /[<>]/ : /[<>"'`]/;
-      return value.length <= 256 && !pattern.test(value) ? value : null;
+      const relaxed = key === "nick" || key === "text" || key === "sdp" || key === "candidate";
+      const pattern = relaxed ? /[<>]/ : /[<>"'`]/;
+      const max = key === "sdp" ? 16000 : key === "candidate" ? 2048 : 256;
+      return value.length <= max && !pattern.test(value) ? value : null;
     }
     if (Array.isArray(value)) {
       if (value.length > 256) return null;
@@ -143,6 +152,7 @@
         c.subscribe([t.lobby, t.state, t.bus], { qos: 0 });
         this.emit("status", { online: true, broker: url, code: this.code });
         this._heartbeat();
+        this.hello();
         if (this.isHost() && this.lobby) this.publishLobby(this.lobby);
         if (this.isHost() && this.state) this.publishState(this.state);
       });
@@ -218,7 +228,7 @@
   };
 
   Room.prototype._heartbeat = function () {
-    this._send("bus", { t: "hb", id: this.pid, nick: nick() });
+    this._send("bus", { t: "hb", id: this.pid, nick: nick(), voice: voice() });
   };
   Room.prototype._gc = function () {
     const now = Date.now();
@@ -238,10 +248,10 @@
   };
 
   Room.prototype.hello = function () {
-    this._send("bus", { t: "hello", id: this.pid, nick: nick(), game: this.game });
+    this._send("bus", { t: "hello", id: this.pid, nick: nick(), voice: voice(), game: this.game });
   };
   Room.prototype.send = function (act) {
-    const msg = Object.assign({ t: "act" }, act, { id: this.pid, nick: nick() });
+    const msg = Object.assign({ t: "act" }, act, { id: this.pid, nick: nick(), voice: voice() });
     this._send("bus", msg, false);
   };
   Room.prototype.publishLobby = function (lobby) {
@@ -285,6 +295,7 @@
     const mine = copy.findIndex(s => s.kind === "human" && s.id === human.id);
     if (mine >= 0 && (prefer == null || prefer < 0)) {
       copy[mine].nick = human.nick;
+      if (human.voice) copy[mine].voice = validVoice(human.voice);
       return copy;
     }
     let idx = prefer;
@@ -304,7 +315,7 @@
       return copy;
     }
     if (mine >= 0 && mine !== idx) copy[mine] = { kind: "empty" };
-    copy[idx] = { kind: "human", id: human.id, nick: human.nick };
+    copy[idx] = { kind: "human", id: human.id, nick: human.nick, voice: validVoice(human.voice) };
     return copy;
   }
   function swapSeats(seats, a, b) {
@@ -343,7 +354,7 @@
       const code = makeCode();
       const room = new Room(code, game, true);
       const seats = emptySeats(nSeats);
-      seats[0] = { kind: "human", id: pid(), nick: nick() };
+      seats[0] = { kind: "human", id: pid(), nick: nick(), voice: voice() };
       const filled = (cfg && cfg.fillAI !== false) ? fillAI(seats) : seats;
       room.lobby = {
         v: 1,
@@ -366,7 +377,7 @@
     },
     soloLobby(game, nSeats, cfg) {
       const seats = emptySeats(nSeats);
-      seats[0] = { kind: "human", id: pid(), nick: nick() };
+      seats[0] = { kind: "human", id: pid(), nick: nick(), voice: voice() };
       return {
         v: 1,
         game,

@@ -92,8 +92,18 @@
         try { r.close(); } catch(e){}
         location.href = NightHall.pageUrl(page, code);
       };
-      setTimeout(() => jump('shengji.html'), 2800);
-      r.on('lobby', L => jump(L.game==='doudizhu' ? 'doudizhu.html' : 'shengji.html'));
+      const timeout = setTimeout(() => {
+        if (done) return;
+        done = true;
+        joining = false;
+        try { r.close(); } catch(e){}
+        NightHall.toast('暂时找不到房间，请确认房间码和房主在线');
+      }, 5000);
+      r.on('lobby', L => {
+        if (!L || !['doudizhu','shengji'].includes(L.game)) return;
+        clearTimeout(timeout);
+        jump(L.game==='doudizhu' ? 'doudizhu.html' : 'shengji.html');
+      });
     } finally { if (!lookupStarted) joining = false; }
   }
   document.getElementById('joinBtn').onclick = () => goJoin();

@@ -99,6 +99,7 @@
     this.seen = [];
     this.lobby = null;
     this.state = null;
+    this.stateRevision = -1;
     this._hb = null;
     this._watch = null;
     this._alive = {};
@@ -190,7 +191,16 @@
       return;
     }
     if (msg.t === "state" && msg.state && this.hostId && msg.from === this.hostId) {
-      this.state = msg.state;
+      if (Object.prototype.hasOwnProperty.call(msg.state, "rev")) {
+        if (!Number.isSafeInteger(msg.state.rev) || msg.state.rev <= this.stateRevision) return;
+        this.stateRevision = msg.state.rev;
+        this.state = msg.state;
+      } else {
+        const revision = this.stateRevision + 1;
+        if (!Number.isSafeInteger(revision)) return;
+        this.stateRevision = revision;
+        this.state = Object.assign({}, msg.state, { rev: revision });
+      }
       this.emit("state", this.state);
       return;
     }
@@ -260,8 +270,12 @@
     this._send("lobby", { t: "lobby", lobby: lobby }, true);
   };
   Room.prototype.publishState = function (state) {
-    this.state = state;
-    this._send("state", { t: "state", state: state }, true);
+    if (!this.isHost() || !state || typeof state !== "object") return false;
+    const revision = Math.max(this.stateRevision + 1, Number.isSafeInteger(state.rev) ? state.rev + 1 : 0);
+    this.stateRevision = revision;
+    this.state = Object.assign({}, state, { rev: revision });
+    this._send("state", { t: "state", state: this.state }, true);
+    return revision;
   };
   Room.prototype.close = function () {
     this._closed = true;

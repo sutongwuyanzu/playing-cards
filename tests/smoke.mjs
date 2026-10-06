@@ -238,15 +238,18 @@ try {
       room.hostId = 'host';
       const applied = [];
       room.on('state', state => applied.push(state.rev));
+      room._onMsg({ mid: 'revision-legacy', from: 'host', t: 'state', state: { phase: 'deal' } }, 'local');
       room._onMsg({ mid: 'revision-new', from: 'host', t: 'state', state: { rev: 4, phase: 'play' } }, 'local');
+      room._onMsg({ mid: 'revision-repeat', from: 'host', t: 'state', state: { rev: 4, phase: 'play-repeat' } }, 'local');
       room._onMsg({ mid: 'revision-old', from: 'host', t: 'state', state: { rev: 3, phase: 'bid' } }, 'local');
-      room.close();
       const denied = room.publishState({ phase: 'play' });
       room.hostId = NightNet.pid;
       const published = room.publishState({ phase: 'play' });
-      return { applied, denied, published, currentRevision: room.stateRevision };
+      const currentRevision = room.stateRevision;
+      room.close();
+      return { applied, denied, published, currentRevision };
     });
-    assert.deepEqual(result, { applied: [4], denied: false, published: 5, currentRevision: 5 }, '旧牌局 revision 不应覆盖新状态，且仅当前房主可发布');
+    assert.deepEqual(result, { applied: [0, 4], denied: false, published: 5, currentRevision: 5 }, '无版本旧快照应分配本地序号，新 revision 递增接受且重复或更旧版本丢弃');
     await page.close();
   }
 } finally {

@@ -190,9 +190,17 @@
       this.emit("lobby", this.lobby);
       return;
     }
-    if (msg.t === "state" && msg.state && Number.isSafeInteger(msg.state.rev) && this.hostId && msg.from === this.hostId && msg.state.rev > this.stateRevision) {
-      this.stateRevision = msg.state.rev;
-      this.state = msg.state;
+    if (msg.t === "state" && msg.state && this.hostId && msg.from === this.hostId) {
+      if (Object.prototype.hasOwnProperty.call(msg.state, "rev")) {
+        if (!Number.isSafeInteger(msg.state.rev) || msg.state.rev <= this.stateRevision) return;
+        this.stateRevision = msg.state.rev;
+        this.state = msg.state;
+      } else {
+        const revision = this.stateRevision + 1;
+        if (!Number.isSafeInteger(revision)) return;
+        this.stateRevision = revision;
+        this.state = Object.assign({}, msg.state, { rev: revision });
+      }
       this.emit("state", this.state);
       return;
     }

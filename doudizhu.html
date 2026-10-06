@@ -425,6 +425,7 @@ function applyPlay(p, combo){
   return true;
 }
 function applyPass(p){
+  if (!G || G.finished || G.phase!=='play' || G.turn!==p || !G.lastPlay || G.lastPlayer===p || G.passes>=2) return false;
   G.passes++;
   showPlayed(p, null);
   if (window.NightVoice){
@@ -445,6 +446,7 @@ function applyPass(p){
   }
   if (isAiSeat(G.turn) && isHost() && !G.finished) setTimeout(aiTurn, 800);
   pub();
+  return true;
 }
 
 function takeOneEach(hand, vals){

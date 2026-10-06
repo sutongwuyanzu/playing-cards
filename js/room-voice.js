@@ -30,7 +30,23 @@
       button.setAttribute("aria-pressed", enabled && !muted ? "true" : "false");
     }
     function send(to, signal) {
-      if (!destroyed) room.send({ act: "voice-signal", to, signal });
+      if (destroyed) return;
+      const portable = {};
+      if (signal && signal.renegotiate) portable.renegotiate = true;
+      if (signal && signal.description) {
+        const d = signal.description;
+        portable.description = { type: d.type, sdp: d.sdp };
+      }
+      if (signal && signal.candidate) {
+        const c = signal.candidate;
+        portable.candidate = typeof c.toJSON === "function" ? c.toJSON() : {
+          candidate: c.candidate,
+          sdpMid: c.sdpMid,
+          sdpMLineIndex: c.sdpMLineIndex,
+          usernameFragment: c.usernameFragment
+        };
+      }
+      room.send({ act: "voice-signal", to, signal: portable });
     }
     function removeAudio(id) {
       const el = audios.get(id);

@@ -41,6 +41,21 @@ try {
     await page.close();
   }
 
+  for (const path of ['doudizhu.html', 'shengji.html']) {
+    const { page } = await open(path, { width: 844, height: 390 });
+    const layout = await page.evaluate(() => ({
+      viewportWidth: innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      appHeight: document.querySelector('.app').getBoundingClientRect().height,
+      viewportHeight: innerHeight,
+      handBottom: document.querySelector('.hand,.handbar')?.getBoundingClientRect().bottom || 0
+    }));
+    assert.equal(layout.documentWidth <= layout.viewportWidth, true, `${path} 横屏不应横向溢出`);
+    assert.equal(layout.appHeight <= layout.viewportHeight + 1, true, `${path} 横屏牌桌应限制在可视高度`);
+    assert.equal(layout.handBottom > 0 && layout.handBottom <= layout.viewportHeight + 1, true, `${path} 横屏手牌应留在视口内`);
+    await page.close();
+  }
+
   {
     const { page } = await open('doudizhu.html');
     const result = await page.evaluate(async () => {
@@ -53,6 +68,48 @@ try {
     assert.deepEqual(result.profile.nick, '测试友', '入房前应确认昵称');
     assert.equal(typeof result.profile.voice, 'string', '入房前应选择音色');
     assert.equal(result.hasRtc, true, '房间页面应加载实时语音模块');
+    await page.close();
+  }
+
+  {
+    const { page } = await open('doudizhu.html');
+    const result = await page.evaluate(async () => {
+      const sent = [];
+      class SessionDescription {
+        constructor(type, sdp) { this.type = type; this.sdp = sdp; }
+      }
+      class FakePeerConnection {
+        constructor() { this.signalingState = 'stable'; this.connectionState = 'new'; }
+        addTrack() {}
+        createOffer() { return Promise.resolve(new SessionDescription('offer', 'v=0')); }
+        setLocalDescription(description) { this.localDescription = new SessionDescription(description.type, description.sdp); return Promise.resolve(); }
+        close() { this.connectionState = 'closed'; }
+      }
+      window.RTCPeerConnection = FakePeerConnection;
+      Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
+        configurable: true,
+        value: async () => ({ getTracks: () => [{ stop() {} }], getAudioTracks: () => [{ enabled: false }] })
+      });
+      const room = {
+        pid: NightNet.pid,
+        lobby: { seats: [{ kind: 'human', id: 'remote' }] },
+        on() {},
+        send(message) { sent.push(message); }
+      };
+      const voice = NightRoomVoice.attach(room);
+      await voice.toggle();
+      await new Promise(resolve => setTimeout(resolve, 30));
+      const offer = sent.find(message => message.signal && message.signal.description);
+      const cloneable = offer ? structuredClone(offer) : null;
+      const result = {
+        hasOffer: !!offer,
+        plainDescription: !!offer && Object.getPrototypeOf(offer.signal.description) === Object.prototype,
+        cloneable: !!cloneable
+      };
+      voice.destroy();
+      return result;
+    });
+    assert.deepEqual(result, { hasOffer: true, plainDescription: true, cloneable: true }, 'WebRTC 描述必须规范化成可跨 BroadcastChannel 结构化克隆的普通对象');
     await page.close();
   }
 
@@ -117,6 +174,35 @@ try {
   {
     const { page } = await open('doudizhu.html');
     const result = await page.evaluate(() => {
+      G = {
+        hands: [[], [], []], landlord: 0, landlordBid: 1, turn: 0, phase: 'play',
+        bids: [1, 0, 0], highestBid: 1, bidTurn: 0, lastPlay: null,
+        lastPlayer: -1, passes: 0, bombCount: 0, finished: false,
+        selected: new Set(), hints: [], hintIdx: 0
+      };
+      const invalidLeadPass = applyPass(0);
+      G.lastPlay = { type: 'single', rank: 9, len: 1, cards: [{ id: 'H9', v: 9 }] };
+      G.lastPlayer = 2;
+      const wrongSeatPass = applyPass(1);
+      const validPass = applyPass(0);
+      const passCount = G.passes;
+      G.turn = 1;
+      const nextValidPass = applyPass(1);
+      const reset = G.lastPlay === null && G.turn === 2 && G.passes === 0;
+      G.finished = true;
+      const finishedPass = applyPass(2);
+      return { invalidLeadPass, wrongSeatPass, validPass, passCount, nextValidPass, reset, finishedPass };
+    });
+    assert.deepEqual(result, {
+      invalidLeadPass: false, wrongSeatPass: false, validPass: true,
+      passCount: 1, nextValidPass: true, reset: true, finishedPass: false
+    }, '斗地主不应接受领出回合、错位或已结束状态下的不出动作');
+    await page.close();
+  }
+
+  {
+    const { page } = await open('doudizhu.html');
+    const result = await page.evaluate(() => {
       const map = NightSkin.customMap();
       map['♥A'] = 'data:image/jpeg;base64,AA==';
       NightSkin.set('custom');
@@ -129,6 +215,7 @@ try {
   {
     const { page } = await open('doudizhu.html');
     const result = await page.evaluate(async () => {
+      window.mqtt = undefined;
       window.__smokeRoom = NightNet.join('doudizhu', 'SMOKE1');
       let accepted = false;
       window.__smokeRoom.on('lobby', () => { accepted = true; });
@@ -140,6 +227,26 @@ try {
       return accepted;
     });
     assert.equal(result, false, '恶意联机消息不应被接受');
+    await page.close();
+  }
+
+  {
+    const { page } = await open('doudizhu.html');
+    const result = await page.evaluate(() => {
+      window.mqtt = undefined;
+      const room = NightNet.join('doudizhu', 'REVISION1');
+      room.hostId = 'host';
+      const applied = [];
+      room.on('state', state => applied.push(state.rev));
+      room._onMsg({ mid: 'revision-new', from: 'host', t: 'state', state: { rev: 4, phase: 'play' } }, 'local');
+      room._onMsg({ mid: 'revision-old', from: 'host', t: 'state', state: { rev: 3, phase: 'bid' } }, 'local');
+      room.close();
+      const denied = room.publishState({ phase: 'play' });
+      room.hostId = NightNet.pid;
+      const published = room.publishState({ phase: 'play' });
+      return { applied, denied, published, currentRevision: room.stateRevision };
+    });
+    assert.deepEqual(result, { applied: [4], denied: false, published: 5, currentRevision: 5 }, '旧牌局 revision 不应覆盖新状态，且仅当前房主可发布');
     await page.close();
   }
 } finally {

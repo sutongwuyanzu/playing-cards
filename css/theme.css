@@ -227,12 +227,12 @@ img{display:block;max-width:100%}
   border:1px solid var(--gold-dim);
   border-radius:12px;padding:6px 10px;
   font-size:13px;line-height:1.35;
-  width:max-content;max-width:min(220px,calc(100vw - 96px));min-width:28px;
+  width:max-content;max-width:min(220px,calc(100vw - 120px));min-width:28px;
   box-sizing:border-box;
   writing-mode:horizontal-tb;
   opacity:0;pointer-events:none;
   box-shadow:0 6px 16px rgba(0,0,0,.4);
-  word-break:break-word;
+  overflow-wrap:anywhere;word-break:normal;
   transform:translateY(6px) scale(.96);
   transition:opacity .18s ease, transform .18s ease;
 }
@@ -498,6 +498,28 @@ img{display:block;max-width:100%}
   .app{max-width:1100px;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.6)}
   .hand .pcard,.handbar .pcard{width:132px;height:190px}
   .hand,.handbar{--overlap:62px;min-height:214px}
+}
+
+@media (max-height:520px) and (orientation:landscape){
+  .app{height:100svh;min-height:320px}
+  .hud{gap:5px;padding:4px 8px 3px;padding-top:max(4px,env(safe-area-inset-top))}
+  .hud .title{font-size:15px}
+  .table-scene{height:min(25dvh,124px);width:min(70vw,620px);margin-top:0}
+  .seat.e,.seat.w{top:28%}
+  .me-row{margin-bottom:2px}
+  .dock{padding-top:0;padding-bottom:max(4px,env(safe-area-inset-bottom))}
+  .hand,.handbar{min-height:0;padding:10px 2px 4px}
+  .hand .pcard,.handbar .pcard{width:54px;height:78px;border-radius:8px}
+  .hand .pcard .rk,.handbar .pcard .rk{font-size:15px;top:4px;left:6px}
+  .hand .pcard .su,.handbar .pcard .su{font-size:13px;top:20px;left:6px}
+  .hand .pcard .pip,.handbar .pcard .pip{font-size:20px;right:6px;bottom:4px}
+  .hand,.handbar{--overlap:24px;min-height:94px}
+  .pcard.sel{transform:translateY(-14px)}
+  .controls,#controls,#bidBar{gap:5px;margin-top:3px}
+  .btn{min-height:36px;padding:6px 10px}
+  .msg,#msg,#phaseTip{margin-top:2px;min-height:12px}
+  .log{max-height:34px;margin-bottom:3px}
+  .chat-drawer{max-height:80dvh}
 }
 
 .hidden{display:none !important}

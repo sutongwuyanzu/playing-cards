@@ -99,6 +99,7 @@
     this.seen = [];
     this.lobby = null;
     this.state = null;
+    this.stateRevision = -1;
     this._hb = null;
     this._watch = null;
     this._alive = {};
@@ -189,7 +190,8 @@
       this.emit("lobby", this.lobby);
       return;
     }
-    if (msg.t === "state" && msg.state && this.hostId && msg.from === this.hostId) {
+    if (msg.t === "state" && msg.state && Number.isSafeInteger(msg.state.rev) && this.hostId && msg.from === this.hostId && msg.state.rev > this.stateRevision) {
+      this.stateRevision = msg.state.rev;
       this.state = msg.state;
       this.emit("state", this.state);
       return;
@@ -260,8 +262,12 @@
     this._send("lobby", { t: "lobby", lobby: lobby }, true);
   };
   Room.prototype.publishState = function (state) {
-    this.state = state;
-    this._send("state", { t: "state", state: state }, true);
+    if (!this.isHost() || !state || typeof state !== "object") return false;
+    const revision = Math.max(this.stateRevision + 1, Number.isSafeInteger(state.rev) ? state.rev + 1 : 0);
+    this.stateRevision = revision;
+    this.state = Object.assign({}, state, { rev: revision });
+    this._send("state", { t: "state", state: this.state }, true);
+    return revision;
   };
   Room.prototype.close = function () {
     this._closed = true;

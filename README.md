@@ -14,6 +14,8 @@
 
 本地：用浏览器打开 `index.html`，或任意静态服务器。
 
+开发时建议在仓库根目录运行 `python -m http.server 8765`，再打开 `http://127.0.0.1:8765/`。安装 Playwright 后运行 `npm run test:smoke`（默认连接 8765 端口）。
+
 | 页面 | 玩法 |
 |---|---|
 | `index.html` | 夜牌馆大厅（填房间码可加入） |
@@ -31,6 +33,14 @@
 ## 联机
 
 创建房间后把 **6 位房间码** 或邀请链接发给朋友。房主权威同步牌局，走公网 MQTT + 同浏览器通道。房主需保持页面打开。
+
+## 语音与皮肤
+
+报牌和角色台词只播放 `assets/tts/{音色}/` 下的预录 MP3/WAV；浏览器首次播放需要点击或按键授权。报牌短句可用 `python scripts/gen_tts.py` 重录，角色台词可用 `python tools/qwen3_tts_generate.py` 重录（需要本机已配置对应模型）。皮肤图片在 `assets/skins/`，自定义 54 张牌面保存在浏览器 IndexedDB。
+
+## 分支与发布
+
+GitHub Pages 跟踪 `main`。功能分支完成并合入 `main`、推送后，线上页面才会更新。
 
 ## 规划中
 

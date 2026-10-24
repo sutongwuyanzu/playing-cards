@@ -1,7 +1,7 @@
 /* 夜牌馆 · 出牌语音：牌面报牌保留短音频，角色台词使用 Qwen3-TTS 合成音频 */
 (function (w) {
   const KEY = "nh_voice";
-  const VER = "7";
+  const VER = "8";
   const VOICE_POLICY = { maxQueue: 3, maxClipMs: 5000 };
   const TYPES = [
     { id: "yujie", name: "御姐", pitch: 1, rate: 1,
@@ -68,9 +68,10 @@
   const JIELIU_PASS = ["pass.mp3", "pass2.mp3", "pass3.mp3", "pass4.mp3", "pass5.mp3", "pass6.mp3"];
   const JIELIU_TAUNT = ["taunt1.mp3", "taunt2.mp3", "taunt3.mp3", "taunt4.mp3", "taunt5.mp3", "taunt6.mp3", "taunt7.mp3", "taunt8.mp3"];
   let audio = null;
-  let unlocked = false;
   let playing = false;
   let q = [];
+  let retryPlayback = null;
+  let cancelPlayback = null;
 
   function asset(typeId, file) {
     const rel = "assets/tts/" + typeId + "/" + file;
@@ -78,12 +79,8 @@
     catch (e) { return rel + "?v=" + VER; }
   }
   function unlock() {
-    if (unlocked) return;
-    unlocked = true;
-    const a = new Audio(asset("youth", "preview.mp3"));
-    a.volume = 0.01;
-    const p = a.play();
-    if (p && p.then) p.then(function () { try { a.pause(); a.currentTime = 0; } catch (e) {} }).catch(function () {});
+    if (retryPlayback) retryPlayback();
+    else drainQueue();
   }
   if (w.document) {
     w.document.addEventListener("pointerdown", unlock, { capture: true });
@@ -124,8 +121,11 @@
     if (!s) return "";
     return s + r;
   }
-  function playUrl(url, done) {
-    unlock();
+  function playUrl(url, done, priority) {
+    if (priority) {
+      q = [];
+      if (cancelPlayback) cancelPlayback();
+    }
     q.push({ url: url, done: done });
     if (q.length > VOICE_POLICY.maxQueue) q.splice(0, q.length - VOICE_POLICY.maxQueue);
     drainQueue();
@@ -138,13 +138,10 @@
     audio = a;
     let settled = false;
     let timer = null;
-    let retry = null;
     function cleanup() {
       if (timer) clearTimeout(timer);
-      if (retry) {
-        w.document.removeEventListener("pointerdown", retry, true);
-        w.document.removeEventListener("keydown", retry, true);
-      }
+      if (retryPlayback === start) retryPlayback = null;
+      if (cancelPlayback === cancel) cancelPlayback = null;
       a.onended = null;
       a.onerror = null;
     }
@@ -156,27 +153,27 @@
       if (audio === a) audio = null;
       playing = false;
       if (item.done) item.done(ok);
-      if (q.length) setTimeout(drainQueue, 0);
+      if (q.length) drainQueue();
     }
+    function cancel() { finish(false); }
+    cancelPlayback = cancel;
     a.onended = function () { finish(true); };
-    a.onerror = function () { finish(false); };
+    a.onerror = function () { console.warn("牌桌录音加载失败：", item.url); finish(false); };
     a.src = item.url;
-    timer = setTimeout(function () { finish(true); }, VOICE_POLICY.maxClipMs);
-    const p = a.play();
-    if (p && p.catch) {
-      p.catch(function () {
-        retry = function () {
-          if (settled) return;
-          w.document.removeEventListener("pointerdown", retry, true);
-          w.document.removeEventListener("keydown", retry, true);
-          retry = null;
-          const again = a.play();
-          if (again && again.catch) again.catch(function () { finish(false); });
-        };
-        w.document.addEventListener("pointerdown", retry, true);
-        w.document.addEventListener("keydown", retry, true);
+    function start() {
+      if (settled) return;
+      retryPlayback = null;
+      const p = a.play();
+      if (p && p.then) p.then(function () {
+        if (!settled) timer = setTimeout(function () { finish(false); }, VOICE_POLICY.maxClipMs);
+      }).catch(function (error) {
+        if (settled) return;
+        if (error && error.name === "NotAllowedError") retryPlayback = start;
+        else { console.warn("牌桌录音播放失败：", item.url, error); finish(false); }
       });
+      else timer = setTimeout(function () { finish(false); }, VOICE_POLICY.maxClipMs);
     }
+    start();
   }
   function speak(typeId, text, opt) {
     opt = opt || {};
@@ -197,7 +194,7 @@
       if (ok && typeId === "jieliu" && (kind === "play" || kind === "kill") && Math.random() < 0.28) {
         setTimeout(function () { playUrl(asset(typeId, pick(JIELIU_TAUNT)), function () {}); }, 40);
       }
-    });
+    }, kind === "preview");
   }
   function speakCards(typeId, cards, killing) {
     const c = (cards && cards[0]) || null;

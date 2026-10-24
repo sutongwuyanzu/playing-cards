@@ -41,6 +41,32 @@ try {
     await page.close();
   }
 
+  {
+    const { page } = await open('doudizhu.html');
+    const result = await page.evaluate(async () => {
+      const OriginalAudio = window.Audio;
+      let attempts = 0;
+      window.Audio = class {
+        play() {
+          attempts++;
+          return attempts === 1 ? Promise.reject(new DOMException('blocked', 'NotAllowedError')) : Promise.resolve();
+        }
+        pause() {}
+      };
+      NightVoice.VOICE_POLICY.maxClipMs = 20;
+      NightVoice.speak('youth', '', { kind: 'preview' });
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const beforeGesture = attempts;
+      document.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
+      await new Promise(resolve => setTimeout(resolve, 10));
+      const afterGesture = attempts;
+      window.Audio = OriginalAudio;
+      return { beforeGesture, afterGesture };
+    });
+    assert.deepEqual(result, { beforeGesture: 1, afterGesture: 2 }, '自动播放被拒后应等待手势重试，不应被超时计时清掉');
+    await page.close();
+  }
+
   for (const path of ['doudizhu.html', 'shengji.html']) {
     const { page } = await open(path, { width: 844, height: 390 });
     const layout = await page.evaluate(() => ({

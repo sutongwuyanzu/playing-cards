@@ -168,6 +168,27 @@ try {
   }
 
   {
+    const { page } = await open('doudizhu.html');
+    const result = await page.evaluate(async () => {
+      NightSkin.set('bikini');
+      const cards = NightSkin.SLOTS.map(key => key === 'JS' || key === 'JB'
+        ? { joker: true, jokerType: key === 'JB' ? 'big' : 'small' }
+        : { suit: key[0], r: key.slice(1) });
+      const urls = cards.map(card => NightSkin.faceUrl(card));
+      const sources = cards.map(card => NightSkin.faceImg(card).match(/src="([^"]+)/)?.[1] || '');
+      const responses = await Promise.all(sources.map(src => fetch(src)));
+      return {
+        count: urls.length,
+        unique: new Set(urls).size,
+        versioned: sources.every(src => src.endsWith('?v=8')),
+        loaded: responses.every(response => response.ok && response.headers.get('content-type')?.includes('image/jpeg'))
+      };
+    });
+    assert.deepEqual(result, { count: 54, unique: 54, versioned: true, loaded: true }, '比基尼 54 张牌面应各有可加载的独立底图');
+    await page.close();
+  }
+
+  {
     const { page } = await open('doudizhu.html', { width: 1440, height: 900 });
     const result = await page.evaluate(() => {
       const hand = [

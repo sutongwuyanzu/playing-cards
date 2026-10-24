@@ -144,7 +144,7 @@
   function faceImg(c) {
     const u = faceUrl(c);
     if (!u) return "";
-    const src = u.indexOf("data:") === 0 ? u : u + (u.indexOf("?") >= 0 ? "&" : "?") + "v=7";
+    const src = u.indexOf("data:") === 0 ? u : u + (u.indexOf("?") >= 0 ? "&" : "?") + "v=8";
     return '<img class="face-art" alt="" src="' + src.replace(/"/g, "") + '">';
   }
   function filledCount() {
